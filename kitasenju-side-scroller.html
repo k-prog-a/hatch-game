@@ -1,0 +1,1117 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>北千住ランナー</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --remote-h: clamp(144px, 24vh, 198px);
+      --ink: #f7fbff;
+      --muted: #a7c4c8;
+      --panel: rgba(4, 24, 28, 0.72);
+      --line: rgba(151, 246, 255, 0.24);
+      --accent: #28f0d7;
+      --gold: #ffd438;
+      --danger: #ff4d68;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #050b0e;
+    }
+
+    .wrap {
+      position: fixed;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(0, 242, 255, 0.10), transparent 44%),
+        radial-gradient(circle at 70% 10%, rgba(255, 212, 56, 0.16), transparent 24%),
+        #050b0e;
+    }
+
+    header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px clamp(14px, 3vw, 28px) 10px;
+      background: linear-gradient(180deg, rgba(2, 8, 10, 0.88), transparent);
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(20px, 3vw, 34px);
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-shadow: 0 3px 0 #002a2d;
+      white-space: nowrap;
+    }
+
+    .hud {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      min-width: 92px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      font-size: 14px;
+      font-weight: 800;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    main {
+      position: absolute;
+      inset: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: calc(100vh - var(--remote-h));
+      image-rendering: pixelated;
+      background: #071216;
+      cursor: crosshair;
+    }
+
+    .message {
+      position: absolute;
+      left: 50%;
+      top: 49%;
+      transform: translate(-50%, -50%);
+      width: min(560px, calc(100vw - 32px));
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(2, 12, 15, 0.82);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      text-align: center;
+      z-index: 2;
+      backdrop-filter: blur(10px);
+    }
+
+    .message[hidden] {
+      display: none;
+    }
+
+    .message strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: clamp(23px, 5vw, 42px);
+      line-height: 1.05;
+    }
+
+    .message span {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: var(--remote-h);
+      display: grid;
+      grid-template-columns: minmax(136px, 1fr) auto minmax(136px, 1fr);
+      align-items: center;
+      justify-content: space-between;
+      gap: clamp(10px, 4vw, 28px);
+      padding: 14px clamp(14px, 4vw, 34px) max(14px, env(safe-area-inset-bottom));
+      background:
+        linear-gradient(180deg, rgba(7, 14, 18, 0.86), rgba(2, 8, 10, 0.98)),
+        #071013;
+      border-top: 1px solid rgba(151, 246, 255, 0.22);
+      z-index: 3;
+    }
+
+    .hint {
+      justify-self: center;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .controls {
+      display: contents;
+    }
+
+    .dpad {
+      justify-self: start;
+      display: grid;
+      grid-template-columns: repeat(3, 54px);
+      grid-template-rows: repeat(3, 42px);
+      gap: 8px;
+      touch-action: none;
+    }
+
+    .dpad button[data-key="up"] {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .dpad button[data-key="left"] {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .dpad button[data-key="right"] {
+      grid-column: 3;
+      grid-row: 2;
+    }
+
+    .dpad button[data-key="down"] {
+      grid-column: 2;
+      grid-row: 3;
+    }
+
+    .action-pad {
+      justify-self: end;
+      display: grid;
+      place-items: center;
+      touch-action: none;
+    }
+
+    button {
+      width: 54px;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(7, 35, 39, 0.86);
+      font: 900 18px/1 system-ui, sans-serif;
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.28);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .jump-button {
+      width: clamp(88px, 20vw, 116px);
+      height: clamp(88px, 20vw, 116px);
+      border-radius: 50%;
+      border-color: rgba(255, 212, 56, 0.55);
+      color: #101010;
+      background: radial-gradient(circle at 35% 28%, #fff6a8, #ffd438 58%, #db8a16);
+      font-size: clamp(15px, 3vw, 19px);
+      box-shadow:
+        inset 0 -8px 0 rgba(0, 0, 0, 0.18),
+        0 10px 26px rgba(0, 0, 0, 0.28);
+    }
+
+    button:active {
+      transform: translateY(1px);
+      background: rgba(0, 132, 132, 0.9);
+    }
+
+    @media (max-width: 700px) {
+      .pill {
+        min-width: 72px;
+        padding-inline: 8px;
+        font-size: 12px;
+      }
+
+      h1 {
+        font-size: 18px;
+      }
+
+      .hint {
+        font-size: 11px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      :root {
+        --remote-h: 172px;
+      }
+
+      footer {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+          "hint hint"
+          "dpad action";
+        align-items: end;
+      }
+
+      .hint {
+        grid-area: hint;
+      }
+
+      .dpad {
+        grid-area: dpad;
+        grid-template-columns: repeat(3, 46px);
+        grid-template-rows: repeat(3, 36px);
+        gap: 6px;
+      }
+
+      .action-pad {
+        grid-area: action;
+      }
+
+      button {
+        width: 46px;
+        height: 36px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>北千住ランナー</h1>
+      <div class="hud" aria-label="ゲーム情報">
+        <div class="pill" id="coins">小判 0/0</div>
+        <div class="pill" id="lives">体力 3</div>
+        <div class="pill" id="time">00.0</div>
+      </div>
+    </header>
+
+    <main>
+      <canvas id="game" width="1280" height="720" aria-label="横スクロールゲーム"></canvas>
+      <audio id="bgm" src="retro-pixel-quest.mp3" loop preload="auto"></audio>
+      <div class="message" id="message">
+        <strong>北千住へ走れ!</strong>
+        <span>← → / A D で移動、Space / W / ↑ でジャンプ。小判を集めて右端ののれんへ。</span>
+      </div>
+    </main>
+
+    <footer>
+      <div class="hint">クリックまたはキー入力で開始。R でリスタート。</div>
+      <div class="controls" aria-label="タッチ操作">
+        <div class="dpad" aria-label="十字キー">
+          <button data-key="up" aria-label="上">↑</button>
+          <button data-key="left" aria-label="左">←</button>
+          <button data-key="right" aria-label="右">→</button>
+          <button data-key="down" aria-label="下">↓</button>
+        </div>
+        <div class="action-pad" aria-label="アクション">
+          <button class="jump-button" data-key="jump" aria-label="ジャンプ">JUMP</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const coinsEl = document.getElementById("coins");
+    const livesEl = document.getElementById("lives");
+    const timeEl = document.getElementById("time");
+    const messageEl = document.getElementById("message");
+    const bgm = document.getElementById("bgm");
+    const sprite = new Image();
+    sprite.src = "kitasenju-game-spritesheet.webp";
+
+    const keys = { left: false, right: false, jump: false };
+    let audioCtx = null;
+    const world = {
+      width: 5600,
+      height: 720,
+      gravity: 2300,
+      camera: 0,
+      started: false,
+      finished: false,
+      resetTimer: null,
+      startTime: 0,
+      elapsed: 0
+    };
+
+    const player = {
+      x: 120,
+      y: 0,
+      w: 72,
+      h: 96,
+      vx: 0,
+      vy: 0,
+      speed: 470,
+      jump: 920,
+      grounded: false,
+      face: 1,
+      lives: 3,
+      hurtTimer: 0,
+      anim: 0
+    };
+
+    const platforms = [
+      { x: 0, y: 660, w: 5600, h: 80 }
+    ];
+
+    const coins = [
+      640, 720, 1120, 1210, 1630, 1740, 2320, 2420, 2860, 3470, 3580,
+      4100, 4200, 4740, 4860, 5220
+    ].map((x, i) => ({
+      x,
+      y: [590, 590, 566, 590, 590, 566, 590, 590, 566, 590, 590, 566, 590, 590, 566, 590][i],
+      r: 17,
+      got: false,
+      spin: Math.random() * 6
+    }));
+
+    const enemies = [
+      { x: 910, startX: 910, y: 0, w: 54, h: 52, vx: -85, startVx: -85, min: 860, max: 1120 },
+      { x: 1940, startX: 1940, y: 0, w: 54, h: 52, vx: 95, startVx: 95, min: 1880, max: 2180 },
+      { x: 3080, startX: 3080, y: 0, w: 54, h: 52, vx: -120, startVx: -120, min: 3020, max: 3330 },
+      { x: 4440, startX: 4440, y: 0, w: 54, h: 52, vx: 115, startVx: 115, min: 4380, max: 4720 }
+    ];
+
+    const particles = [];
+
+    function groundY() {
+      return Math.max(430, canvas.clientHeight - 60);
+    }
+
+    function layoutGame() {
+      const gy = groundY();
+      platforms[0].y = gy;
+      platforms[0].h = Math.max(80, canvas.clientHeight - gy + 24);
+      coins.forEach((coin, i) => {
+        coin.y = gy - ([70, 70, 94, 70, 70, 94, 70, 70, 94, 70, 70, 94, 70, 70, 94, 70][i] || 70);
+      });
+      if (player.y + player.h > gy || player.grounded) {
+        player.y = gy - player.h;
+      }
+    }
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(canvas.clientWidth * dpr);
+      canvas.height = Math.floor(canvas.clientHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      layoutGame();
+    }
+
+    function start() {
+      if (world.finished || player.lives <= 0) return;
+      if (!world.started) {
+        playBgm();
+        world.started = true;
+        world.startTime = performance.now();
+        messageEl.hidden = true;
+      }
+    }
+
+    function playBgm() {
+      bgm.volume = 0.42;
+      bgm.play().catch(() => {});
+    }
+
+    function playJumpSound() {
+      audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const now = audioCtx.currentTime;
+      osc.type = "square";
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(980, now + 0.08);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    }
+
+    function playStompSound() {
+      audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const now = audioCtx.currentTime;
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.12);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.22, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    }
+
+    function playCoinSound() {
+      audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+      const gain = audioCtx.createGain();
+      const now = audioCtx.currentTime;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.18, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+      gain.connect(audioCtx.destination);
+      [1040, 1560].forEach((freq, index) => {
+        const osc = audioCtx.createOscillator();
+        const start = now + index * 0.06;
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, start);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.18, start + 0.08);
+        osc.connect(gain);
+        osc.start(start);
+        osc.stop(start + 0.12);
+      });
+    }
+
+    function secretFly() {
+      if (world.finished || player.lives <= 0) return;
+      start();
+      player.vy = -1250;
+      player.grounded = false;
+      playJumpSound();
+      burst(player.x + player.w / 2, player.y + player.h, "#ffd438", 16);
+    }
+
+    function restart() {
+      if (world.resetTimer) {
+        clearTimeout(world.resetTimer);
+        world.resetTimer = null;
+      }
+      keys.left = false;
+      keys.right = false;
+      keys.jump = false;
+      Object.assign(player, {
+        x: 120,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        grounded: false,
+        face: 1,
+        lives: 3,
+        hurtTimer: 0,
+        anim: 0
+      });
+      layoutGame();
+      coins.forEach((coin) => { coin.got = false; });
+      enemies.forEach((enemy) => {
+        enemy.x = enemy.startX;
+        enemy.y = 0;
+        enemy.vx = enemy.startVx;
+        enemy.vy = 0;
+      });
+      particles.length = 0;
+      world.camera = 0;
+      world.started = true;
+      world.finished = false;
+      world.startTime = performance.now();
+      world.elapsed = 0;
+      playBgm();
+      messageEl.hidden = true;
+    }
+
+    function setKey(name, value) {
+      keys[name] = value;
+      if (value) start();
+    }
+
+    function rectsOverlap(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function standOnPlatforms(body, dt) {
+      player.grounded = false;
+      for (const p of platforms) {
+        const previousBottom = body.y + body.h - player.vy * dt;
+        if (body.x + body.w > p.x && body.x < p.x + p.w && body.y + body.h >= p.y && previousBottom <= p.y) {
+          body.y = p.y - body.h;
+          player.vy = 0;
+          player.grounded = true;
+        }
+      }
+    }
+
+    function burst(x, y, color, count = 10) {
+      for (let i = 0; i < count; i += 1) {
+        particles.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 280,
+          vy: -Math.random() * 260 - 40,
+          life: 0.55,
+          color
+        });
+      }
+    }
+
+    function hurt() {
+      if (player.hurtTimer > 0 || world.finished) return;
+      player.lives -= 1;
+      player.hurtTimer = 0.75;
+      player.vy = -620;
+      player.vx = -player.face * 250;
+      burst(player.x + player.w / 2, player.y + player.h / 2, "#ff4d68", 16);
+      if (player.lives <= 0) {
+        world.started = false;
+        messageEl.hidden = false;
+        messageEl.querySelector("strong").textContent = "もう一回!";
+        messageEl.querySelector("span").textContent = "R またはクリックでリスタート。敵は踏むと倒せます。";
+      }
+    }
+
+    function update(dt) {
+      if (!world.started || player.lives <= 0) return;
+
+      world.elapsed = (performance.now() - world.startTime) / 1000;
+      player.hurtTimer = Math.max(0, player.hurtTimer - dt);
+      player.anim += dt;
+
+      const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+      player.vx += (dir * player.speed - player.vx) * Math.min(1, 14 * dt);
+      if (dir) player.face = dir;
+
+      if (keys.jump && player.grounded) {
+        player.vy = -player.jump;
+        player.grounded = false;
+        playJumpSound();
+        burst(player.x + player.w / 2, player.y + player.h, "#28f0d7", 8);
+      }
+
+      player.vy += world.gravity * dt;
+      player.x += player.vx * dt;
+      player.y += player.vy * dt;
+      player.x = Math.max(0, Math.min(world.width - player.w, player.x));
+      standOnPlatforms(player, dt);
+
+      if (player.y > world.height + 220) hurt();
+      if (player.y > world.height + 360) {
+        player.x = Math.max(80, player.x - 380);
+        player.y = 120;
+        player.vy = 0;
+      }
+
+      for (const enemy of enemies) {
+        enemy.vy = (enemy.vy || 0) + world.gravity * dt;
+        enemy.x += enemy.vx * dt;
+        enemy.y += enemy.vy * dt;
+        if (enemy.x < enemy.min || enemy.x + enemy.w > enemy.max) enemy.vx *= -1;
+        for (const p of platforms) {
+          const previousBottom = enemy.y + enemy.h - enemy.vy * dt;
+          if (enemy.x + enemy.w > p.x && enemy.x < p.x + p.w && enemy.y + enemy.h >= p.y && previousBottom <= p.y) {
+            enemy.y = p.y - enemy.h;
+            enemy.vy = 0;
+          }
+        }
+        if (rectsOverlap(player, enemy)) {
+          if (player.vy > 120 && player.y + player.h - enemy.y < 32) {
+            enemy.x = enemy.max + 9999;
+            player.vy = -620;
+            playStompSound();
+            burst(enemy.x, enemy.y, "#ffd438", 12);
+          } else {
+            hurt();
+          }
+        }
+      }
+
+      for (const coin of coins) {
+        coin.spin += dt * 9;
+        if (!coin.got) {
+          const dx = player.x + player.w / 2 - coin.x;
+          const dy = player.y + player.h / 2 - coin.y;
+          if (Math.hypot(dx, dy) < 58) {
+            coin.got = true;
+            playCoinSound();
+            burst(coin.x, coin.y, "#ffd438", 9);
+          }
+        }
+      }
+
+      for (let i = particles.length - 1; i >= 0; i -= 1) {
+        const p = particles[i];
+        p.life -= dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 650 * dt;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      world.camera += (player.x - world.camera - canvas.clientWidth * 0.38) * Math.min(1, 6 * dt);
+      world.camera = Math.max(0, Math.min(world.width - canvas.clientWidth, world.camera));
+
+      const goal = { x: world.width - 250, y: groundY() - 230, w: 110, h: 230 };
+      if (rectsOverlap(player, goal)) {
+        world.finished = true;
+        world.started = false;
+        player.vx = 0;
+        player.vy = 0;
+        keys.left = false;
+        keys.right = false;
+        keys.jump = false;
+        messageEl.hidden = true;
+        messageEl.querySelector("strong").textContent = "ゴール!";
+        messageEl.querySelector("span").textContent = `小判 ${coins.filter((c) => c.got).length}/${coins.length}、タイム ${world.elapsed.toFixed(1)} 秒。最初に戻ります。`;
+        world.resetTimer = setTimeout(restart, 2200);
+      }
+
+      coinsEl.textContent = `小判 ${coins.filter((c) => c.got).length}/${coins.length}`;
+      livesEl.textContent = `体力 ${Math.max(0, player.lives)}`;
+      timeEl.textContent = world.elapsed.toFixed(1).padStart(4, "0");
+    }
+
+    function drawCity() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      const cam = world.camera;
+      const groundY = h - 92;
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, "#17245f");
+      sky.addColorStop(0.46, "#8d2f83");
+      sky.addColorStop(0.78, "#f07a54");
+      sky.addColorStop(1, "#151526");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = "rgba(255, 212, 56, 0.88)";
+      ctx.beginPath();
+      ctx.arc(w - 126, 88, 34, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(5, 11, 14, 0.34)";
+      ctx.beginPath();
+      ctx.arc(w - 106, 78, 34, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.translate(-cam * 0.14, 0);
+      const farColors = ["#244a8f", "#5a3f8f", "#225c82", "#6b417b", "#304f72"];
+      for (let i = -3; i < 34; i += 1) {
+        const x = i * 190;
+        const bh = 155 + ((i * 53) % 130);
+        ctx.fillStyle = farColors[Math.abs(i) % farColors.length];
+        ctx.fillRect(x, groundY - bh - 34, 128, bh + 34);
+        ctx.fillStyle = "#0a1d23";
+        ctx.fillRect(x + 14, groundY - bh - 54, 96, 20);
+        ctx.fillStyle = "rgba(154, 242, 230, 0.24)";
+        for (let yy = groundY - bh - 8; yy < groundY - 38; yy += 38) {
+          for (let xx = x + 20; xx < x + 106; xx += 30) {
+            ctx.fillRect(xx, yy, 14, 18);
+          }
+        }
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(-cam * 0.36, 0);
+      const nearColors = ["#2767b2", "#d94d72", "#f39a36", "#2aa7a2", "#7e55c7", "#d6b23a"];
+      for (let i = -2; i < 42; i += 1) {
+        const x = i * 172;
+        const bh = 96 + ((i * 41) % 110);
+        ctx.fillStyle = nearColors[Math.abs(i) % nearColors.length];
+        ctx.fillRect(x, groundY - bh, 132, bh);
+        ctx.fillStyle = i % 4 === 0 ? "#ffd438" : i % 4 === 1 ? "#28f0d7" : "#f4fbff";
+        ctx.globalAlpha = 0.78;
+        ctx.fillRect(x + 12, groundY - bh + 16, 72, 24);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#061116";
+        ctx.font = "900 13px system-ui, sans-serif";
+        const labels = ["ラーメン", "商店街", "駅前", "北千住"];
+        ctx.fillText(labels[Math.abs(i) % labels.length], x + 18, groundY - bh + 34);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.34)";
+        for (let yy = groundY - bh + 56; yy < groundY - 20; yy += 30) {
+          ctx.fillRect(x + 20, yy, 18, 14);
+          ctx.fillRect(x + 54, yy, 18, 14);
+          ctx.fillRect(x + 88, yy, 18, 14);
+        }
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(-cam * 0.62, 0);
+      ctx.fillStyle = "rgba(5, 11, 14, 0.72)";
+      ctx.fillRect(-80, groundY + 34, world.width + 160, 58);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.28)";
+      for (let x = -80; x < world.width; x += 150) {
+        ctx.fillRect(x, groundY + 60, 74, 6);
+      }
+      ctx.restore();
+    }
+
+    function drawPlatform(p) {
+      const x = Math.round(p.x - world.camera);
+      ctx.fillStyle = "#676d73";
+      ctx.fillRect(x, p.y, p.w, p.h);
+      ctx.fillStyle = "#d8c18e";
+      ctx.fillRect(x, p.y - 24, p.w, 24);
+      ctx.fillStyle = "#4c5359";
+      ctx.fillRect(x, p.y + 18, p.w, 10);
+      ctx.fillStyle = "#f6e37a";
+      for (let tx = x; tx < x + p.w; tx += 160) {
+        ctx.fillRect(tx + 20, p.y + 48, 82, 8);
+      }
+    }
+
+    function drawCoin(coin) {
+      if (coin.got) return;
+      const x = coin.x - world.camera;
+      const scale = 0.45 + Math.abs(Math.cos(coin.spin)) * 0.55;
+      ctx.save();
+      ctx.translate(x, coin.y);
+      ctx.scale(scale, 1);
+      ctx.fillStyle = "#ffd438";
+      ctx.beginPath();
+      ctx.arc(0, 0, coin.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#fff6b0";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawEnemy(enemy) {
+      if (enemy.x > world.width) return;
+      const x = enemy.x - world.camera;
+      ctx.fillStyle = "#ff4d68";
+      ctx.fillRect(x, enemy.y + 12, enemy.w, enemy.h - 12);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x + 9, enemy.y + 22, 10, 10);
+      ctx.fillRect(x + 34, enemy.y + 22, 10, 10);
+      ctx.fillStyle = "#101010";
+      ctx.fillRect(x + 12, enemy.y + 25, 5, 5);
+      ctx.fillRect(x + 37, enemy.y + 25, 5, 5);
+      ctx.fillStyle = "#5e1020";
+      ctx.fillRect(x + 12, enemy.y + enemy.h - 8, enemy.w - 24, 8);
+    }
+
+    function drawGoal() {
+      const x = world.width - 250 - world.camera;
+      ctx.fillStyle = "#081619";
+      ctx.fillRect(x, 430, 112, 198);
+      ctx.fillStyle = "#28f0d7";
+      ctx.fillRect(x - 12, 420, 14, 208);
+      ctx.fillRect(x + 110, 420, 14, 208);
+      ctx.fillStyle = "#ffd438";
+      ctx.fillRect(x - 20, 412, 144, 28);
+      ctx.fillStyle = "#101010";
+      ctx.font = "900 19px system-ui, sans-serif";
+      ctx.fillText("ゴール", x + 14, 433);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x + 20, 474, 72, 88);
+    }
+
+    function drawPlayfulBackdrop() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      const cam = world.camera;
+      const groundY = h - 92;
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, "#62c8ff");
+      sky.addColorStop(0.68, "#9be7ff");
+      sky.addColorStop(1, "#fff0a6");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.save();
+      ctx.translate(-cam * 0.08, 0);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+      for (let i = -2; i < 18; i += 1) {
+        const x = i * 420 + 72;
+        const y = 78 + (Math.abs(i) % 3) * 46;
+        ctx.beginPath();
+        ctx.arc(x, y, 28, 0, Math.PI * 2);
+        ctx.arc(x + 34, y - 12, 35, 0, Math.PI * 2);
+        ctx.arc(x + 74, y, 28, 0, Math.PI * 2);
+        ctx.rect(x - 4, y, 84, 28);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(-cam * 0.18, 0);
+      for (let i = -2; i < 28; i += 1) {
+        const x = i * 260;
+        const hillH = 86 + (Math.abs(i * 37) % 58);
+        ctx.fillStyle = i % 2 === 0 ? "#60c85a" : "#46b85d";
+        ctx.beginPath();
+        ctx.ellipse(x + 130, groundY + 8, 152, hillH, 0, Math.PI, 0, true);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
+        ctx.beginPath();
+        ctx.ellipse(x + 76, groundY - 24, 22, 12, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(-cam * 0.34, 0);
+      for (let i = -1; i < 36; i += 1) {
+        const x = i * 220;
+        ctx.fillStyle = "#d47a32";
+        ctx.fillRect(x, groundY - 70, 132, 70);
+        ctx.fillStyle = "#9b4f22";
+        for (let yy = groundY - 64; yy < groundY - 8; yy += 22) {
+          for (let xx = x + 8; xx < x + 126; xx += 30) {
+            ctx.fillRect(xx, yy, 20, 14);
+          }
+        }
+        if (i % 4 === 0) {
+          ctx.fillStyle = "#31a982";
+          ctx.fillRect(x + 152, groundY - 112, 74, 112);
+          ctx.fillStyle = "#ffe45c";
+          ctx.fillRect(x + 170, groundY - 148, 38, 36);
+        }
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(-cam * 0.62, 0);
+      ctx.fillStyle = "#54bf40";
+      ctx.fillRect(-80, groundY, world.width + 160, 34);
+      ctx.fillStyle = "#2f8f34";
+      for (let x = -80; x < world.width; x += 40) {
+        ctx.fillRect(x, groundY + 4, 20, 8);
+      }
+      ctx.fillStyle = "#7a4824";
+      ctx.fillRect(-80, groundY + 34, world.width + 160, 58);
+      ctx.fillStyle = "#5d361d";
+      for (let x = -80; x < world.width; x += 34) {
+        ctx.fillRect(x, groundY + 34, 17, 17);
+        ctx.fillRect(x + 17, groundY + 51, 17, 17);
+      }
+      ctx.restore();
+    }
+
+    function drawFlagGoal() {
+      const x = world.width - 205 - world.camera;
+      const poleBottom = groundY();
+      const poleTop = Math.max(112, poleBottom - 378);
+      ctx.fillStyle = "#f7fbff";
+      ctx.fillRect(x, poleTop, 10, poleBottom - poleTop);
+      ctx.fillStyle = "#d9e8ff";
+      ctx.fillRect(x + 10, poleTop, 4, poleBottom - poleTop);
+      ctx.fillStyle = "#ffd438";
+      ctx.beginPath();
+      ctx.arc(x + 5, poleTop - 10, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ff4d68";
+      ctx.fillRect(x + 14, poleTop + 28, 94, 58);
+      ctx.fillStyle = "#7a4824";
+      ctx.fillRect(x - 34, poleBottom, 82, 22);
+      ctx.fillStyle = "#5d361d";
+      ctx.fillRect(x - 22, poleBottom + 8, 22, 10);
+      ctx.fillRect(x + 8, poleBottom + 8, 22, 10);
+    }
+
+    function drawStreetBackdrop() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      const cam = world.camera;
+      const gy = groundY();
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, "#68cfff");
+      sky.addColorStop(0.58, "#b6ecff");
+      sky.addColorStop(1, "#ffe9a8");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.save();
+      ctx.translate(-cam * 0.08, 0);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+      for (let i = -2; i < 18; i += 1) {
+        const x = i * 430 + 80;
+        const y = 78 + (Math.abs(i) % 3) * 38;
+        ctx.beginPath();
+        ctx.arc(x, y, 28, 0, Math.PI * 2);
+        ctx.arc(x + 36, y - 14, 36, 0, Math.PI * 2);
+        ctx.arc(x + 78, y, 28, 0, Math.PI * 2);
+        ctx.rect(x - 5, y, 88, 28);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(-cam * 0.22, 0);
+      const farColors = ["#4c77c4", "#7b65c8", "#3d9fbe", "#dc6f77", "#e5a744"];
+      for (let i = -2; i < 30; i += 1) {
+        const x = i * 210;
+        const bh = 145 + (Math.abs(i * 53) % 130);
+        ctx.fillStyle = farColors[Math.abs(i) % farColors.length];
+        ctx.fillRect(x, gy - bh - 70, 154, bh);
+        ctx.fillStyle = "rgba(255,255,255,0.38)";
+        for (let yy = gy - bh - 44; yy < gy - 96; yy += 34) {
+          for (let xx = x + 20; xx < x + 126; xx += 36) {
+            ctx.fillRect(xx, yy, 18, 16);
+          }
+        }
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(-cam * 0.48, 0);
+      const shopColors = ["#f05d65", "#35a7b4", "#f3a33c", "#7657c6", "#55ad5a"];
+      for (let i = -1; i < 34; i += 1) {
+        const x = i * 240;
+        ctx.fillStyle = shopColors[Math.abs(i) % shopColors.length];
+        ctx.fillRect(x, gy - 150, 178, 150);
+        ctx.fillStyle = "#fff5d6";
+        ctx.fillRect(x + 18, gy - 132, 104, 30);
+        ctx.fillStyle = "#1f2430";
+        ctx.fillRect(x + 28, gy - 82, 42, 82);
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        ctx.fillRect(x + 94, gy - 76, 48, 36);
+        ctx.fillStyle = "rgba(0,0,0,0.18)";
+        ctx.fillRect(x, gy - 12, 178, 12);
+      }
+      ctx.restore();
+
+      ctx.fillStyle = "#d8c18e";
+      ctx.fillRect(0, gy - 24, w, 24);
+      ctx.fillStyle = "#676d73";
+      ctx.fillRect(0, gy, w, h - gy);
+      ctx.fillStyle = "#4c5359";
+      ctx.fillRect(0, gy + 18, w, 10);
+      ctx.fillStyle = "#f6e37a";
+      for (let x = -((cam * 0.9) % 160); x < w; x += 160) {
+        ctx.fillRect(x, gy + 48, 82, 8);
+      }
+    }
+
+    function drawGoalBubble() {
+      if (!world.finished) return;
+      const x = Math.min(canvas.clientWidth - 300, Math.max(26, player.x - world.camera - 72));
+      const y = Math.max(92, player.y - 118);
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#101010";
+      ctx.lineWidth = 4;
+      ctx.fillRect(x, y, 258, 58);
+      ctx.strokeRect(x, y, 258, 58);
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(x + 54, y + 58);
+      ctx.lineTo(x + 76, y + 58);
+      ctx.lineTo(x + 60, y + 78);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#101010";
+      ctx.font = "900 24px 'MS Gothic', 'Yu Gothic', monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("万枚ダメカネ", x + 129, y + 30);
+      ctx.textAlign = "start";
+      ctx.textBaseline = "alphabetic";
+      ctx.restore();
+    }
+
+    function drawPlayer() {
+      const fw = sprite.width / 8;
+      const fh = sprite.height / 6;
+      let row = 0;
+      let col = 0;
+      if (!player.grounded) {
+        row = player.vy < 0 ? 2 : 3;
+        col = Math.abs(Math.floor(player.anim * 7)) % 8;
+      } else if (Math.abs(player.vx) > 30) {
+        row = 1;
+        col = Math.abs(Math.floor(player.anim * 10)) % 8;
+      } else if (player.hurtTimer > 0) {
+        row = 5;
+        col = Math.abs(Math.floor(player.anim * 12)) % 8;
+      } else {
+        row = 0;
+        col = Math.abs(Math.floor(player.anim * 4)) % 8;
+      }
+
+      const dx = Math.round(player.x - world.camera - 18);
+      const dy = Math.round(player.y - 12);
+      ctx.save();
+      if (player.hurtTimer > 0 && Math.floor(player.hurtTimer * 18) % 2 === 0) ctx.globalAlpha = 0.45;
+      if (player.face > 0) {
+        ctx.translate(dx + player.w + 36, dy);
+        ctx.scale(-1, 1);
+        ctx.drawImage(sprite, col * fw, row * fh, fw, fh, 0, 0, player.w + 36, player.h + 24);
+      } else {
+        ctx.drawImage(sprite, col * fw, row * fh, fw, fh, dx, dy, player.w + 36, player.h + 24);
+      }
+      ctx.restore();
+    }
+
+    function render() {
+      drawStreetBackdrop();
+      platforms.forEach(drawPlatform);
+      coins.forEach(drawCoin);
+      enemies.forEach(drawEnemy);
+      drawFlagGoal();
+      particles.forEach((p) => {
+        ctx.globalAlpha = Math.max(0, p.life * 1.8);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - world.camera, p.y, 5, 5);
+        ctx.globalAlpha = 1;
+      });
+      if (sprite.complete && sprite.naturalWidth) drawPlayer();
+      drawGoalBubble();
+    }
+
+    let last = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.033, (now - last) / 1000);
+      last = now;
+      update(dt);
+      render();
+      requestAnimationFrame(frame);
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("keydown", (event) => {
+      if (event.code === "ArrowLeft" || event.code === "KeyA") setKey("left", true);
+      if (event.code === "ArrowRight" || event.code === "KeyD") setKey("right", true);
+      if (event.code === "ArrowUp" || event.code === "KeyW" || event.code === "Space") setKey("jump", true);
+      if (event.code === "KeyT") secretFly();
+      if (event.code === "KeyR") restart();
+    });
+    window.addEventListener("keyup", (event) => {
+      if (event.code === "ArrowLeft" || event.code === "KeyA") setKey("left", false);
+      if (event.code === "ArrowRight" || event.code === "KeyD") setKey("right", false);
+      if (event.code === "ArrowUp" || event.code === "KeyW" || event.code === "Space") setKey("jump", false);
+    });
+    window.addEventListener("pointerdown", () => {
+      if (player.lives <= 0 || world.finished) restart();
+      else start();
+    });
+
+    document.querySelectorAll("button[data-key]").forEach((button) => {
+      const name = button.dataset.key;
+      const inputName = name === "up" ? "jump" : name;
+      button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        if (inputName === "down") start();
+        else setKey(inputName, true);
+      });
+      button.addEventListener("pointerup", () => {
+        if (inputName !== "down") setKey(inputName, false);
+      });
+      button.addEventListener("pointercancel", () => {
+        if (inputName !== "down") setKey(inputName, false);
+      });
+      button.addEventListener("pointerleave", () => {
+        if (inputName !== "down") setKey(inputName, false);
+      });
+    });
+
+    resize();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
