@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <title>北千住ランナー</title>
   <style>
     :root {
@@ -27,6 +27,7 @@
     body {
       margin: 0;
       min-height: 100vh;
+      min-height: 100dvh;
       overflow: hidden;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--ink);
@@ -99,6 +100,7 @@
       display: block;
       width: 100vw;
       height: calc(100vh - var(--remote-h));
+      height: calc(100dvh - var(--remote-h));
       image-rendering: pixelated;
       background: #071216;
       cursor: crosshair;
@@ -342,6 +344,43 @@
         font-size: 10px;
       }
     }
+
+    @media (orientation: landscape) and (max-height: 560px) {
+      :root {
+        --remote-h: clamp(110px, 28dvh, 154px);
+      }
+
+      header {
+        padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 4px max(10px, env(safe-area-inset-left));
+      }
+
+      h1 {
+        font-size: clamp(15px, 2.4vw, 22px);
+      }
+
+      .hud {
+        gap: 6px;
+      }
+
+      .pill {
+        min-width: 70px;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+
+      footer {
+        padding: 4px max(12px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      }
+
+      .hint {
+        display: none;
+      }
+
+      .controls {
+        width: min(78vw, 760px);
+        max-height: calc(var(--remote-h) - 8px);
+      }
+    }
   </style>
 </head>
 <body>
@@ -530,7 +569,12 @@
     const particles = [];
     let currentDpr = 1;
 
+    function isLandscapePhone() {
+      return window.innerWidth > window.innerHeight && window.innerHeight <= 560;
+    }
+
     function viewScale() {
+      if (isLandscapePhone()) return 0.68;
       return window.innerWidth <= 700 ? 0.78 : 1;
     }
 
@@ -572,8 +616,17 @@
       layoutGame();
     }
 
+    function tryEnterFullscreen() {
+      if (!isLandscapePhone() || document.fullscreenElement) return;
+      const target = document.documentElement;
+      if (target.requestFullscreen) {
+        target.requestFullscreen().catch(() => {});
+      }
+    }
+
     function start() {
       if (world.finished || world.ending || player.lives <= 0) return;
+      tryEnterFullscreen();
       if (!world.started) {
         playBgm();
         world.started = true;
@@ -1470,6 +1523,7 @@
     }
 
     window.addEventListener("resize", resize);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", resize);
     window.addEventListener("keydown", (event) => {
       if (event.code === "ArrowLeft" || event.code === "KeyA") setKey("left", true);
       if (event.code === "ArrowRight" || event.code === "KeyD") setKey("right", true);
