@@ -7,7 +7,7 @@
   <style>
     :root {
       color-scheme: dark;
-      --remote-h: clamp(144px, 24vh, 198px);
+      --remote-h: clamp(176px, 27vh, 238px);
       --ink: #f7fbff;
       --muted: #a7c4c8;
       --panel: rgba(4, 24, 28, 0.72);
@@ -19,6 +19,9 @@
 
     * {
       box-sizing: border-box;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
 
     body {
@@ -28,6 +31,8 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--ink);
       background: #050b0e;
+      overscroll-behavior: none;
+      touch-action: manipulation;
     }
 
     .wrap {
@@ -97,6 +102,10 @@
       image-rendering: pixelated;
       background: #071216;
       cursor: crosshair;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: none;
     }
 
     .message {
@@ -203,10 +212,7 @@
       bottom: 0;
       height: var(--remote-h);
       display: grid;
-      grid-template-columns: minmax(136px, 1fr) auto minmax(136px, 1fr);
-      align-items: center;
-      justify-content: space-between;
-      gap: clamp(10px, 4vw, 28px);
+      place-items: center;
       padding: 14px clamp(14px, 4vw, 34px) max(14px, env(safe-area-inset-bottom));
       background:
         linear-gradient(180deg, rgba(7, 14, 18, 0.86), rgba(2, 8, 10, 0.98)),
@@ -216,50 +222,36 @@
     }
 
     .hint {
-      justify-self: center;
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      transform: translateX(-50%);
+      width: min(92vw, 520px);
       color: var(--muted);
       font-size: 13px;
       text-align: center;
+      z-index: 2;
     }
 
     .controls {
-      display: contents;
-    }
-
-    .dpad {
-      justify-self: start;
-      display: grid;
-      grid-template-columns: repeat(3, 54px);
-      grid-template-rows: repeat(3, 42px);
-      gap: 8px;
+      position: relative;
+      width: min(92vw, 760px);
+      aspect-ratio: 1717 / 916;
+      max-height: calc(var(--remote-h) - 18px);
       touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
 
-    .dpad button[data-key="up"] {
-      grid-column: 2;
-      grid-row: 1;
-    }
-
-    .dpad button[data-key="left"] {
-      grid-column: 1;
-      grid-row: 2;
-    }
-
-    .dpad button[data-key="right"] {
-      grid-column: 3;
-      grid-row: 2;
-    }
-
-    .dpad button[data-key="down"] {
-      grid-column: 2;
-      grid-row: 3;
-    }
-
-    .action-pad {
-      justify-self: end;
-      display: grid;
-      place-items: center;
-      touch-action: none;
+    .controller-img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      -webkit-user-drag: none;
+      user-select: none;
     }
 
     button {
@@ -273,6 +265,9 @@
       box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.28);
       user-select: none;
       -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: none;
     }
 
     .jump-button {
@@ -287,6 +282,30 @@
         inset 0 -8px 0 rgba(0, 0, 0, 0.18),
         0 10px 26px rgba(0, 0, 0, 0.28);
     }
+
+    .control-hit {
+      position: absolute;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.001);
+      box-shadow: none;
+      color: transparent;
+      font-size: 0;
+    }
+
+    .control-hit:active {
+      transform: none;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .hit-up { left: 20.5%; top: 20%; width: 11%; height: 20%; }
+    .hit-left { left: 9%; top: 39%; width: 13%; height: 18%; }
+    .hit-right { left: 30%; top: 39%; width: 13%; height: 18%; }
+    .hit-down { left: 20.5%; top: 58%; width: 11%; height: 20%; }
+    .hit-x { left: 68%; top: 18%; width: 13%; height: 24%; }
+    .hit-y { left: 56%; top: 38%; width: 13%; height: 24%; }
+    .hit-a { left: 68%; top: 58%; width: 13%; height: 24%; }
+    .hit-b { left: 80%; top: 38%; width: 13%; height: 24%; }
 
     button:active {
       transform: translateY(1px);
@@ -311,35 +330,16 @@
 
     @media (max-width: 560px) {
       :root {
-        --remote-h: 172px;
+        --remote-h: 198px;
       }
 
       footer {
-        grid-template-columns: 1fr 1fr;
-        grid-template-areas:
-          "hint hint"
-          "dpad action";
-        align-items: end;
+        padding-inline: 8px;
       }
 
       .hint {
-        grid-area: hint;
-      }
-
-      .dpad {
-        grid-area: dpad;
-        grid-template-columns: repeat(3, 46px);
-        grid-template-rows: repeat(3, 36px);
-        gap: 6px;
-      }
-
-      .action-pad {
-        grid-area: action;
-      }
-
-      button {
-        width: 46px;
-        height: 36px;
+        top: 6px;
+        font-size: 10px;
       }
     }
   </style>
@@ -347,7 +347,7 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>北千住ランナー</h1>
+      <h1>トリエスへむかえ</h1>
       <div class="hud" aria-label="ゲーム情報">
         <div class="pill" id="coins">小判 0/0</div>
         <div class="pill" id="lives">体力 3</div>
@@ -358,7 +358,7 @@
     <main>
       <canvas id="game" width="1280" height="720" aria-label="横スクロールゲーム"></canvas>
       <audio id="bgm" src="retro-pixel-quest.mp3" loop preload="auto"></audio>
-      <div class="message" id="message">
+      <div class="message" id="message" hidden>
         <strong>北千住へ走れ!</strong>
         <span>← → / A D で移動、Space / W / ↑ でジャンプ。小判を集めて右端ののれんへ。</span>
       </div>
@@ -377,15 +377,15 @@
     <footer>
       <div class="hint">クリックまたはキー入力で開始。R でリスタート。</div>
       <div class="controls" aria-label="タッチ操作">
-        <div class="dpad" aria-label="十字キー">
-          <button data-key="up" aria-label="上">↑</button>
-          <button data-key="left" aria-label="左">←</button>
-          <button data-key="right" aria-label="右">→</button>
-          <button data-key="down" aria-label="下">↓</button>
-        </div>
-        <div class="action-pad" aria-label="アクション">
-          <button class="jump-button" data-key="jump" aria-label="ジャンプ">JUMP</button>
-        </div>
+        <img class="controller-img" src="controller-ui.png" alt="コントローラー">
+        <button class="control-hit hit-up" data-key="up" aria-label="上"></button>
+        <button class="control-hit hit-left" data-key="left" aria-label="左"></button>
+        <button class="control-hit hit-right" data-key="right" aria-label="右"></button>
+        <button class="control-hit hit-down" data-key="down" aria-label="下"></button>
+        <button class="control-hit hit-x" data-key="secret" aria-label="X"></button>
+        <button class="control-hit hit-y" data-key="down" aria-label="Y"></button>
+        <button class="control-hit hit-a" data-key="jump" aria-label="A"></button>
+        <button class="control-hit hit-b" data-key="jump" aria-label="B"></button>
       </div>
     </footer>
   </div>
@@ -402,10 +402,17 @@
     const presentButton = document.getElementById("presentButton");
     const presentImage = document.getElementById("presentImage");
     const bgm = document.getElementById("bgm");
+    const titleEl = document.querySelector("h1");
     const sprite = new Image();
     sprite.src = "kitasenju-game-spritesheet.webp";
     const enemySprite = new Image();
     enemySprite.src = "flame-imp-game-spritesheet.png";
+    const bgImage = new Image();
+    bgImage.src = "kitasenju-city-bg.jpeg";
+    const nightBgImage = new Image();
+    nightBgImage.src = "kitasenju-night-bg.png";
+    const coinImage = new Image();
+    coinImage.src = "sss-coin-transparent.png";
 
     const keys = { left: false, right: false, jump: false };
     let audioCtx = null;
@@ -418,6 +425,7 @@
       finished: false,
       stage: 1,
       bonusCoins: 0,
+      nextHealAt: 10,
       ending: false,
       resetTimer: null,
       startTime: 0,
@@ -479,6 +487,34 @@
       };
     });
 
+    const stageTwoExtraEnemies = Array.from({ length: 20 }, (_, i) => {
+      const startX = 520 + i * 390 + (i % 4) * 42;
+      const startVx = i % 2 === 0 ? 135 : -135;
+      const kind = i % 2 === 0 ? "jumper" : i % 3 === 0 ? "tall" : "round";
+      const size = kind === "tall" ? { w: 42, h: 60 } : kind === "round" ? { w: 50, h: 42 } : { w: 46, h: 44 };
+      const min = Math.max(120, startX - 150);
+      const max = Math.min(world.width - 120, startX + 210);
+      return {
+        x: world.width + 9999,
+        startX,
+        y: 0,
+        w: size.w,
+        h: size.h,
+        vx: startVx,
+        startVx,
+        vy: 0,
+        min,
+        max,
+        startMin: min,
+        startMax: max,
+        kind,
+        stageOnly: 2,
+        jumpClock: 0.25 + (i % 5) * 0.18
+      };
+    });
+
+    enemies.push(...stageTwoExtraEnemies);
+
     const blocks = Array.from({ length: 18 }, (_, i) => ({
       x: 760 + i * 430 + (i % 4) * 56,
       y: 0,
@@ -492,15 +528,28 @@
     }));
 
     const particles = [];
+    let currentDpr = 1;
+
+    function viewScale() {
+      return window.innerWidth <= 700 ? 0.78 : 1;
+    }
+
+    function viewWidth() {
+      return canvas.clientWidth / viewScale();
+    }
+
+    function viewHeight() {
+      return canvas.clientHeight / viewScale();
+    }
 
     function groundY() {
-      return Math.max(430, canvas.clientHeight - 60);
+      return Math.max(430, viewHeight() - 60);
     }
 
     function layoutGame() {
       const gy = groundY();
       platforms[0].y = gy;
-      platforms[0].h = Math.max(80, canvas.clientHeight - gy + 24);
+      platforms[0].h = Math.max(80, viewHeight() - gy + 24);
       platforms[0].w = world.width;
       coins.forEach((coin) => {
         coin.y = gy - coin.lift;
@@ -508,16 +557,18 @@
       blocks.forEach((block) => {
         block.y = gy - block.lift;
       });
-      if (player.y + player.h > gy || player.grounded) {
+      if ((!world.started && player.y === 0) || player.y + player.h > gy || player.grounded) {
         player.y = gy - player.h;
+        player.grounded = true;
       }
     }
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      currentDpr = dpr;
       canvas.width = Math.floor(canvas.clientWidth * dpr);
       canvas.height = Math.floor(canvas.clientHeight * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.setTransform(dpr * viewScale(), 0, 0, dpr * viewScale(), 0, 0);
       layoutGame();
     }
 
@@ -657,7 +708,7 @@
         y: 0,
         vx: 0,
         vy: 0,
-        grounded: false,
+        grounded: true,
         face: 1,
         lives: 3,
         hurtTimer: 0,
@@ -665,6 +716,8 @@
         anim: 0
       });
       layoutGame();
+      player.y = groundY() - player.h;
+      player.grounded = true;
       coins.forEach((coin) => { coin.got = false; });
       blocks.forEach((block) => {
         block.used = false;
@@ -672,7 +725,7 @@
         block.bump = 0;
       });
       enemies.forEach((enemy) => {
-        enemy.x = enemy.startX;
+        enemy.x = enemy.stageOnly === 2 ? world.width + 9999 : enemy.startX;
         enemy.y = 0;
         enemy.vx = enemy.startVx;
         enemy.vy = 0;
@@ -686,6 +739,7 @@
       world.finished = false;
       world.stage = 1;
       world.bonusCoins = 0;
+      world.nextHealAt = 10;
       world.ending = false;
       world.startTime = performance.now();
       world.elapsed = 0;
@@ -722,7 +776,7 @@
         block.bump = 0;
       });
       enemies.forEach((enemy, i) => {
-        const offset = 360 + (i % 3) * 80;
+        const offset = enemy.stageOnly === 2 ? 0 : 360 + (i % 3) * 80;
         enemy.x = enemy.startX + offset;
         enemy.y = 0;
         enemy.vx = enemy.startVx * 1.15;
@@ -800,7 +854,7 @@
       if (player.lives <= 0) {
         world.started = false;
         messageEl.hidden = false;
-        messageEl.querySelector("strong").textContent = "もう一回!";
+        messageEl.querySelector("strong").textContent = "ダメカネ";
         messageEl.querySelector("span").textContent = "R またはクリックでリスタート。敵は踏むと倒せます。";
       }
     }
@@ -808,6 +862,7 @@
     function popBlockCoin(block) {
       world.bonusCoins += 1;
       playCoinSound();
+      maybeHealFromCoins();
       burst(block.x + block.w / 2, block.y - 12, "#ffd438", 14);
       for (let i = 0; i < 10; i += 1) {
         particles.push({
@@ -838,6 +893,29 @@
       }
     }
 
+    function totalCoinsCollected() {
+      return coins.filter((c) => c.got).length + world.bonusCoins;
+    }
+
+    function totalCoinsAvailable() {
+      return coins.length + blocks.filter((b) => b.type === "question").length;
+    }
+
+    function maybeHealFromCoins() {
+      const total = totalCoinsCollected();
+      while (total >= world.nextHealAt) {
+        player.lives += 1;
+        world.nextHealAt += 10;
+        burst(player.x + player.w / 2, player.y + 12, "#9ef2e6", 14);
+      }
+    }
+
+    function updateHud() {
+      coinsEl.textContent = `小判 ${totalCoinsCollected()}/${totalCoinsAvailable()}`;
+      livesEl.textContent = `体力 ${Math.max(0, player.lives)}`;
+      timeEl.textContent = world.elapsed.toFixed(1).padStart(4, "0");
+    }
+
     function update(dt) {
       if (!world.started || player.lives <= 0) return;
 
@@ -863,11 +941,12 @@
       player.x = Math.max(0, Math.min(world.width - player.w, player.x));
       standOnPlatforms(player, dt);
 
-      if (player.y > world.height + 220) hurt();
-      if (player.y > world.height + 360) {
+      if (player.y > groundY() + 220) hurt();
+      if (player.y > groundY() + 360) {
         player.x = Math.max(80, player.x - 380);
-        player.y = 120;
+        player.y = groundY() - player.h;
         player.vy = 0;
+        player.grounded = true;
       }
 
       for (const enemy of enemies) {
@@ -938,6 +1017,7 @@
           if (Math.hypot(dx, dy) < 58) {
             coin.got = true;
             playCoinSound();
+            maybeHealFromCoins();
             burst(coin.x, coin.y, "#ffd438", 9);
           }
         }
@@ -952,8 +1032,8 @@
         if (p.life <= 0) particles.splice(i, 1);
       }
 
-      world.camera += (player.x - world.camera - canvas.clientWidth * 0.38) * Math.min(1, 6 * dt);
-      world.camera = Math.max(0, Math.min(world.width - canvas.clientWidth, world.camera));
+      world.camera += (player.x - world.camera - viewWidth() * 0.38) * Math.min(1, 6 * dt);
+      world.camera = Math.max(0, Math.min(world.width - viewWidth(), world.camera));
 
       const goal = { x: world.width - 250, y: groundY() - 230, w: 110, h: 230 };
       if (rectsOverlap(player, goal)) {
@@ -975,11 +1055,7 @@
         }
       }
 
-      coinsEl.textContent = `小判 ${coins.filter((c) => c.got).length}/${coins.length}`;
-      livesEl.textContent = `体力 ${Math.max(0, player.lives)}`;
-      coinsEl.textContent = `小判 ${coins.filter((c) => c.got).length + world.bonusCoins}/${coins.length + blocks.filter((b) => b.type === "question").length}`;
-      livesEl.textContent = `体力 ${Math.max(0, player.lives)}`;
-      timeEl.textContent = world.elapsed.toFixed(1).padStart(4, "0");
+      updateHud();
     }
 
     function drawCity() {
@@ -1080,20 +1156,25 @@
       ctx.save();
       ctx.translate(x, coin.y);
       ctx.scale(scale, 1);
-      ctx.fillStyle = "#ffd438";
-      ctx.beginPath();
-      ctx.arc(0, 0, coin.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#fff6b0";
-      ctx.lineWidth = 4;
-      ctx.stroke();
+      if (coinImage.complete && coinImage.naturalWidth) {
+        const size = coin.r * 2.8;
+        ctx.drawImage(coinImage, -size / 2, -size / 2, size, size);
+      } else {
+        ctx.fillStyle = "#ffd438";
+        ctx.beginPath();
+        ctx.arc(0, 0, coin.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#fff6b0";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      }
       ctx.restore();
     }
 
     function drawBlock(block) {
       if (block.broken) return;
       const x = Math.round(block.x - world.camera);
-      if (x < -80 || x > canvas.clientWidth + 80) return;
+      if (x < -80 || x > viewWidth() + 80) return;
       const y = Math.round(block.y - (block.bump > 0 ? Math.sin(block.bump * Math.PI / 0.16) * 8 : 0));
       const isUsedQuestion = block.type === "question" && block.used;
       ctx.fillStyle = block.type === "question" ? (isUsedQuestion ? "#9b8d65" : "#ffd438") : "#c06a2b";
@@ -1266,75 +1347,26 @@
     }
 
     function drawStreetBackdrop() {
-      const w = canvas.clientWidth;
-      const h = canvas.clientHeight;
+      const w = viewWidth();
+      const h = viewHeight();
       const cam = world.camera;
       const gy = groundY();
-      const sky = ctx.createLinearGradient(0, 0, 0, h);
-      sky.addColorStop(0, "#68cfff");
-      sky.addColorStop(0.58, world.stage === 2 ? "#324a76" : "#b6ecff");
-      sky.addColorStop(1, world.stage === 2 ? "#17192f" : "#ffe9a8");
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, w, h);
-      if (world.stage === 2) {
-        ctx.fillStyle = "rgba(6, 8, 22, 0.42)";
+      const activeBg = world.stage === 2 ? nightBgImage : bgImage;
+      if (activeBg.complete && activeBg.naturalWidth) {
+        const sourceH = activeBg.naturalHeight;
+        const sourceW = Math.min(activeBg.naturalWidth, sourceH * (w / h));
+        const maxCamera = Math.max(1, world.width - w);
+        const progress = Math.max(0, Math.min(1, cam / maxCamera));
+        const sx = (activeBg.naturalWidth - sourceW) * progress;
+        ctx.drawImage(activeBg, sx, 0, sourceW, sourceH, 0, 0, w, h);
+      } else {
+        const sky = ctx.createLinearGradient(0, 0, 0, h);
+        sky.addColorStop(0, "#68cfff");
+        sky.addColorStop(0.58, "#b6ecff");
+        sky.addColorStop(1, "#ffe9a8");
+        ctx.fillStyle = sky;
         ctx.fillRect(0, 0, w, h);
-        ctx.fillStyle = "rgba(255, 242, 166, 0.86)";
-        ctx.beginPath();
-        ctx.arc(w - 70, 82, 28, 0, Math.PI * 2);
-        ctx.fill();
       }
-
-      ctx.save();
-      ctx.translate(-cam * 0.08, 0);
-      ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
-      for (let i = -2; i < 18; i += 1) {
-        const x = i * 430 + 80;
-        const y = 78 + (Math.abs(i) % 3) * 38;
-        ctx.beginPath();
-        ctx.arc(x, y, 28, 0, Math.PI * 2);
-        ctx.arc(x + 36, y - 14, 36, 0, Math.PI * 2);
-        ctx.arc(x + 78, y, 28, 0, Math.PI * 2);
-        ctx.rect(x - 5, y, 88, 28);
-        ctx.fill();
-      }
-      ctx.restore();
-
-      ctx.save();
-      ctx.translate(-cam * 0.22, 0);
-      const farColors = ["#4c77c4", "#7b65c8", "#3d9fbe", "#dc6f77", "#e5a744"];
-      for (let i = -2; i < 30; i += 1) {
-        const x = i * 210;
-        const bh = 145 + (Math.abs(i * 53) % 130);
-        ctx.fillStyle = farColors[Math.abs(i) % farColors.length];
-        ctx.fillRect(x, gy - bh - 70, 154, bh);
-        ctx.fillStyle = "rgba(255,255,255,0.38)";
-        for (let yy = gy - bh - 44; yy < gy - 96; yy += 34) {
-          for (let xx = x + 20; xx < x + 126; xx += 36) {
-            ctx.fillRect(xx, yy, 18, 16);
-          }
-        }
-      }
-      ctx.restore();
-
-      ctx.save();
-      ctx.translate(-cam * 0.48, 0);
-      const shopColors = ["#f05d65", "#35a7b4", "#f3a33c", "#7657c6", "#55ad5a"];
-      for (let i = -1; i < 34; i += 1) {
-        const x = i * 240;
-        ctx.fillStyle = shopColors[Math.abs(i) % shopColors.length];
-        ctx.fillRect(x, gy - 150, 178, 150);
-        ctx.fillStyle = "#fff5d6";
-        ctx.fillRect(x + 18, gy - 132, 104, 30);
-        ctx.fillStyle = "#1f2430";
-        ctx.fillRect(x + 28, gy - 82, 42, 82);
-        ctx.fillStyle = "rgba(255,255,255,0.45)";
-        ctx.fillRect(x + 94, gy - 76, 48, 36);
-        ctx.fillStyle = "rgba(0,0,0,0.18)";
-        ctx.fillRect(x, gy - 12, 178, 12);
-      }
-      ctx.restore();
-
       ctx.fillStyle = "#d8c18e";
       ctx.fillRect(0, gy - 24, w, 24);
       ctx.fillStyle = "#676d73";
@@ -1349,7 +1381,7 @@
 
     function drawGoalBubble() {
       if (!world.finished) return;
-      const x = Math.min(canvas.clientWidth - 300, Math.max(26, player.x - world.camera - 72));
+      const x = Math.min(viewWidth() - 300, Math.max(26, player.x - world.camera - 72));
       const y = Math.max(92, player.y - 118);
       ctx.save();
       ctx.imageSmoothingEnabled = false;
@@ -1467,21 +1499,23 @@
       const inputName = name === "up" ? "jump" : name;
       button.addEventListener("pointerdown", (event) => {
         event.preventDefault();
-        if (inputName === "down") start();
+        if (inputName === "secret") secretFly();
+        else if (inputName === "down") start();
         else setKey(inputName, true);
       });
       button.addEventListener("pointerup", () => {
-        if (inputName !== "down") setKey(inputName, false);
+        if (inputName !== "down" && inputName !== "secret") setKey(inputName, false);
       });
       button.addEventListener("pointercancel", () => {
-        if (inputName !== "down") setKey(inputName, false);
+        if (inputName !== "down" && inputName !== "secret") setKey(inputName, false);
       });
       button.addEventListener("pointerleave", () => {
-        if (inputName !== "down") setKey(inputName, false);
+        if (inputName !== "down" && inputName !== "secret") setKey(inputName, false);
       });
     });
 
     resize();
+    updateHud();
     requestAnimationFrame(frame);
   </script>
 </body>
