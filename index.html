@@ -7,6 +7,7 @@
   <style>
     :root {
       color-scheme: dark;
+      --remote-h: clamp(144px, 24vh, 198px);
       --ink: #f7fbff;
       --muted: #a7c4c8;
       --panel: rgba(4, 24, 28, 0.72);
@@ -60,6 +61,7 @@
       font-weight: 900;
       letter-spacing: 0;
       text-shadow: 0 3px 0 #002a2d;
+      white-space: nowrap;
     }
 
     .hud {
@@ -91,7 +93,7 @@
     canvas {
       display: block;
       width: 100vw;
-      height: 100vh;
+      height: calc(100vh - var(--remote-h));
       image-rendering: pixelated;
       background: #071216;
       cursor: crosshair;
@@ -135,35 +137,91 @@
       left: 0;
       right: 0;
       bottom: 0;
-      display: flex;
+      height: var(--remote-h);
+      display: grid;
+      grid-template-columns: minmax(136px, 1fr) auto minmax(136px, 1fr);
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      padding: 10px clamp(12px, 3vw, 24px) 14px;
-      background: linear-gradient(0deg, rgba(2, 8, 10, 0.9), transparent);
+      gap: clamp(10px, 4vw, 28px);
+      padding: 14px clamp(14px, 4vw, 34px) max(14px, env(safe-area-inset-bottom));
+      background:
+        linear-gradient(180deg, rgba(7, 14, 18, 0.86), rgba(2, 8, 10, 0.98)),
+        #071013;
+      border-top: 1px solid rgba(151, 246, 255, 0.22);
       z-index: 3;
     }
 
     .hint {
+      justify-self: center;
       color: var(--muted);
       font-size: 13px;
+      text-align: center;
     }
 
     .controls {
-      display: flex;
+      display: contents;
+    }
+
+    .dpad {
+      justify-self: start;
+      display: grid;
+      grid-template-columns: repeat(3, 54px);
+      grid-template-rows: repeat(3, 42px);
       gap: 8px;
       touch-action: none;
     }
 
+    .dpad button[data-key="up"] {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .dpad button[data-key="left"] {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .dpad button[data-key="right"] {
+      grid-column: 3;
+      grid-row: 2;
+    }
+
+    .dpad button[data-key="down"] {
+      grid-column: 2;
+      grid-row: 3;
+    }
+
+    .action-pad {
+      justify-self: end;
+      display: grid;
+      place-items: center;
+      touch-action: none;
+    }
+
     button {
-      width: 52px;
-      height: 44px;
+      width: 54px;
+      height: 42px;
       border: 1px solid var(--line);
       border-radius: 8px;
       color: var(--ink);
       background: rgba(7, 35, 39, 0.86);
       font: 900 18px/1 system-ui, sans-serif;
       box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.28);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .jump-button {
+      width: clamp(88px, 20vw, 116px);
+      height: clamp(88px, 20vw, 116px);
+      border-radius: 50%;
+      border-color: rgba(255, 212, 56, 0.55);
+      color: #101010;
+      background: radial-gradient(circle at 35% 28%, #fff6a8, #ffd438 58%, #db8a16);
+      font-size: clamp(15px, 3vw, 19px);
+      box-shadow:
+        inset 0 -8px 0 rgba(0, 0, 0, 0.18),
+        0 10px 26px rgba(0, 0, 0, 0.28);
     }
 
     button:active {
@@ -178,8 +236,46 @@
         font-size: 12px;
       }
 
+      h1 {
+        font-size: 18px;
+      }
+
       .hint {
-        display: none;
+        font-size: 11px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      :root {
+        --remote-h: 172px;
+      }
+
+      footer {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+          "hint hint"
+          "dpad action";
+        align-items: end;
+      }
+
+      .hint {
+        grid-area: hint;
+      }
+
+      .dpad {
+        grid-area: dpad;
+        grid-template-columns: repeat(3, 46px);
+        grid-template-rows: repeat(3, 36px);
+        gap: 6px;
+      }
+
+      .action-pad {
+        grid-area: action;
+      }
+
+      button {
+        width: 46px;
+        height: 36px;
       }
     }
   </style>
@@ -197,7 +293,7 @@
 
     <main>
       <canvas id="game" width="1280" height="720" aria-label="横スクロールゲーム"></canvas>
-      <audio id="bgm" src="kitasenju-bgm.mp3" loop preload="auto"></audio>
+      <audio id="bgm" src="retro-pixel-quest.mp3" loop preload="auto"></audio>
       <div class="message" id="message">
         <strong>北千住へ走れ!</strong>
         <span>← → / A D で移動、Space / W / ↑ でジャンプ。小判を集めて右端ののれんへ。</span>
@@ -207,9 +303,15 @@
     <footer>
       <div class="hint">クリックまたはキー入力で開始。R でリスタート。</div>
       <div class="controls" aria-label="タッチ操作">
-        <button data-key="left" aria-label="左">←</button>
-        <button data-key="jump" aria-label="ジャンプ">↑</button>
-        <button data-key="right" aria-label="右">→</button>
+        <div class="dpad" aria-label="十字キー">
+          <button data-key="up" aria-label="上">↑</button>
+          <button data-key="left" aria-label="左">←</button>
+          <button data-key="right" aria-label="右">→</button>
+          <button data-key="down" aria-label="下">↓</button>
+        </div>
+        <div class="action-pad" aria-label="アクション">
+          <button class="jump-button" data-key="jump" aria-label="ジャンプ">JUMP</button>
+        </div>
       </div>
     </footer>
   </div>
@@ -279,11 +381,28 @@
 
     const particles = [];
 
+    function groundY() {
+      return Math.max(430, canvas.clientHeight - 60);
+    }
+
+    function layoutGame() {
+      const gy = groundY();
+      platforms[0].y = gy;
+      platforms[0].h = Math.max(80, canvas.clientHeight - gy + 24);
+      coins.forEach((coin, i) => {
+        coin.y = gy - ([70, 70, 94, 70, 70, 94, 70, 70, 94, 70, 70, 94, 70, 70, 94, 70][i] || 70);
+      });
+      if (player.y + player.h > gy || player.grounded) {
+        player.y = gy - player.h;
+      }
+    }
+
     function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.floor(canvas.clientWidth * dpr);
       canvas.height = Math.floor(canvas.clientHeight * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      layoutGame();
     }
 
     function start() {
@@ -383,6 +502,7 @@
         hurtTimer: 0,
         anim: 0
       });
+      layoutGame();
       coins.forEach((coin) => { coin.got = false; });
       enemies.forEach((enemy) => {
         enemy.x = enemy.startX;
@@ -529,7 +649,7 @@
       world.camera += (player.x - world.camera - canvas.clientWidth * 0.38) * Math.min(1, 6 * dt);
       world.camera = Math.max(0, Math.min(world.width - canvas.clientWidth, world.camera));
 
-      const goal = { x: world.width - 250, y: 430, w: 110, h: 198 };
+      const goal = { x: world.width - 250, y: groundY() - 230, w: 110, h: 230 };
       if (rectsOverlap(player, goal)) {
         world.finished = true;
         world.started = false;
@@ -773,8 +893,8 @@
 
     function drawFlagGoal() {
       const x = world.width - 205 - world.camera;
-      const poleTop = 250;
-      const poleBottom = 660;
+      const poleBottom = groundY();
+      const poleTop = Math.max(112, poleBottom - 378);
       ctx.fillStyle = "#f7fbff";
       ctx.fillRect(x, poleTop, 10, poleBottom - poleTop);
       ctx.fillStyle = "#d9e8ff";
@@ -796,7 +916,7 @@
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       const cam = world.camera;
-      const groundY = 660;
+      const gy = groundY();
       const sky = ctx.createLinearGradient(0, 0, 0, h);
       sky.addColorStop(0, "#68cfff");
       sky.addColorStop(0.58, "#b6ecff");
@@ -826,9 +946,9 @@
         const x = i * 210;
         const bh = 145 + (Math.abs(i * 53) % 130);
         ctx.fillStyle = farColors[Math.abs(i) % farColors.length];
-        ctx.fillRect(x, groundY - bh - 70, 154, bh);
+        ctx.fillRect(x, gy - bh - 70, 154, bh);
         ctx.fillStyle = "rgba(255,255,255,0.38)";
-        for (let yy = groundY - bh - 44; yy < groundY - 96; yy += 34) {
+        for (let yy = gy - bh - 44; yy < gy - 96; yy += 34) {
           for (let xx = x + 20; xx < x + 126; xx += 36) {
             ctx.fillRect(xx, yy, 18, 16);
           }
@@ -842,27 +962,27 @@
       for (let i = -1; i < 34; i += 1) {
         const x = i * 240;
         ctx.fillStyle = shopColors[Math.abs(i) % shopColors.length];
-        ctx.fillRect(x, groundY - 150, 178, 150);
+        ctx.fillRect(x, gy - 150, 178, 150);
         ctx.fillStyle = "#fff5d6";
-        ctx.fillRect(x + 18, groundY - 132, 104, 30);
+        ctx.fillRect(x + 18, gy - 132, 104, 30);
         ctx.fillStyle = "#1f2430";
-        ctx.fillRect(x + 28, groundY - 82, 42, 82);
+        ctx.fillRect(x + 28, gy - 82, 42, 82);
         ctx.fillStyle = "rgba(255,255,255,0.45)";
-        ctx.fillRect(x + 94, groundY - 76, 48, 36);
+        ctx.fillRect(x + 94, gy - 76, 48, 36);
         ctx.fillStyle = "rgba(0,0,0,0.18)";
-        ctx.fillRect(x, groundY - 12, 178, 12);
+        ctx.fillRect(x, gy - 12, 178, 12);
       }
       ctx.restore();
 
       ctx.fillStyle = "#d8c18e";
-      ctx.fillRect(0, groundY - 24, w, 24);
+      ctx.fillRect(0, gy - 24, w, 24);
       ctx.fillStyle = "#676d73";
-      ctx.fillRect(0, groundY, w, h - groundY);
+      ctx.fillRect(0, gy, w, h - gy);
       ctx.fillStyle = "#4c5359";
-      ctx.fillRect(0, groundY + 18, w, 10);
+      ctx.fillRect(0, gy + 18, w, 10);
       ctx.fillStyle = "#f6e37a";
       for (let x = -((cam * 0.9) % 160); x < w; x += 160) {
-        ctx.fillRect(x, groundY + 48, 82, 8);
+        ctx.fillRect(x, gy + 48, 82, 8);
       }
     }
 
@@ -973,13 +1093,21 @@
 
     document.querySelectorAll("button[data-key]").forEach((button) => {
       const name = button.dataset.key;
+      const inputName = name === "up" ? "jump" : name;
       button.addEventListener("pointerdown", (event) => {
         event.preventDefault();
-        setKey(name, true);
+        if (inputName === "down") start();
+        else setKey(inputName, true);
       });
-      button.addEventListener("pointerup", () => setKey(name, false));
-      button.addEventListener("pointercancel", () => setKey(name, false));
-      button.addEventListener("pointerleave", () => setKey(name, false));
+      button.addEventListener("pointerup", () => {
+        if (inputName !== "down") setKey(inputName, false);
+      });
+      button.addEventListener("pointercancel", () => {
+        if (inputName !== "down") setKey(inputName, false);
+      });
+      button.addEventListener("pointerleave", () => {
+        if (inputName !== "down") setKey(inputName, false);
+      });
     });
 
     resize();
