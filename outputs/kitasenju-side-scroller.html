@@ -143,6 +143,25 @@
       line-height: 1.5;
     }
 
+    .message.game-over {
+      width: min(520px, calc(100vw - 26px));
+      padding: 8px;
+      border-color: rgba(255, 255, 255, 0.28);
+      background: rgba(0, 0, 0, 0.9);
+    }
+
+    .game-over-image {
+      display: block;
+      width: 100%;
+      max-height: min(72vh, 520px);
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    .game-over-image[hidden] {
+      display: none;
+    }
+
     .ending {
       position: absolute;
       inset: 0;
@@ -400,6 +419,7 @@
       <div class="message" id="message" hidden>
         <strong>北千住へ走れ!</strong>
         <span>← → / A D で移動、Space / W / ↑ でジャンプ。小判を集めて右端ののれんへ。</span>
+        <img class="game-over-image" id="gameOverImage" src="game-over.png" alt="リベンジだ" hidden>
       </div>
       <div class="ending" id="ending" hidden>
         <div class="credits" id="credits">
@@ -440,6 +460,7 @@
     const creditsEl = document.getElementById("credits");
     const presentButton = document.getElementById("presentButton");
     const presentImage = document.getElementById("presentImage");
+    const gameOverImage = document.getElementById("gameOverImage");
     const bgm = document.getElementById("bgm");
     const titleEl = document.querySelector("h1");
     const sprite = new Image();
@@ -452,11 +473,14 @@
     nightBgImage.src = "kitasenju-night-bg.png";
     const coinImage = new Image();
     coinImage.src = "sss-coin-transparent.png";
+    const goalShopImage = new Image();
+    goalShopImage.src = "goal-shop.png";
 
     const keys = { left: false, right: false, jump: false };
     let audioCtx = null;
     const world = {
       width: 8400,
+      stageWidths: { 1: 4200, 2: 8400 },
       height: 720,
       gravity: 2300,
       camera: 0,
@@ -586,6 +610,17 @@
       return canvas.clientHeight / viewScale();
     }
 
+    function stageWidth() {
+      return world.stageWidths[world.stage] || world.width;
+    }
+
+    function goalRect() {
+      if (world.stage === 2) {
+        return { x: stageWidth() - 380, y: groundY() - 250, w: 320, h: 250 };
+      }
+      return { x: stageWidth() - 250, y: groundY() - 230, w: 110, h: 230 };
+    }
+
     function groundY() {
       return Math.max(430, viewHeight() - 60);
     }
@@ -594,7 +629,7 @@
       const gy = groundY();
       platforms[0].y = gy;
       platforms[0].h = Math.max(80, viewHeight() - gy + 24);
-      platforms[0].w = world.width;
+      platforms[0].w = stageWidth();
       coins.forEach((coin) => {
         coin.y = gy - coin.lift;
       });
@@ -630,6 +665,13 @@
       }
     }
 
+    function resetMessageDisplay() {
+      messageEl.classList.remove("game-over");
+      messageEl.querySelector("strong").hidden = false;
+      messageEl.querySelector("span").hidden = false;
+      gameOverImage.hidden = true;
+    }
+
     function start() {
       if (world.finished || world.ending || player.lives <= 0) return;
       tryEnterFullscreen();
@@ -637,6 +679,7 @@
         playBgm();
         world.started = true;
         world.startTime = performance.now();
+        resetMessageDisplay();
         messageEl.hidden = true;
       }
     }
@@ -803,6 +846,7 @@
       world.startTime = performance.now();
       world.elapsed = 0;
       playBgm();
+      resetMessageDisplay();
       messageEl.hidden = true;
       endingEl.hidden = true;
       creditsEl.hidden = false;
@@ -912,9 +956,11 @@
       burst(player.x + player.w / 2, player.y + player.h / 2, "#ff4d68", 16);
       if (player.lives <= 0) {
         world.started = false;
+        messageEl.classList.add("game-over");
         messageEl.hidden = false;
-        messageEl.querySelector("strong").textContent = "ダメカネ";
-        messageEl.querySelector("span").textContent = "R またはクリックでリスタート。敵は踏むと倒せます。";
+        messageEl.querySelector("strong").hidden = true;
+        messageEl.querySelector("span").hidden = true;
+        gameOverImage.hidden = false;
       }
     }
 
@@ -997,7 +1043,7 @@
       player.vy += world.gravity * dt;
       player.x += player.vx * dt;
       player.y += player.vy * dt;
-      player.x = Math.max(0, Math.min(world.width - player.w, player.x));
+      player.x = Math.max(0, Math.min(stageWidth() - player.w, player.x));
       standOnPlatforms(player, dt);
 
       if (player.y + player.h > groundY() + 80) {
@@ -1007,7 +1053,7 @@
       }
 
       for (const enemy of enemies) {
-        if (enemy.x > world.width) continue;
+        if (enemy.x > stageWidth()) continue;
         enemy.vy = (enemy.vy || 0) + world.gravity * dt;
         enemy.x += enemy.vx * dt;
         enemy.y += enemy.vy * dt;
@@ -1090,9 +1136,9 @@
       }
 
       world.camera += (player.x - world.camera - viewWidth() * 0.38) * Math.min(1, 6 * dt);
-      world.camera = Math.max(0, Math.min(world.width - viewWidth(), world.camera));
+      world.camera = Math.max(0, Math.min(stageWidth() - viewWidth(), world.camera));
 
-      const goal = { x: world.width - 250, y: groundY() - 230, w: 110, h: 230 };
+      const goal = goalRect();
       if (rectsOverlap(player, goal)) {
         world.finished = true;
         world.started = false;
@@ -1261,7 +1307,7 @@
     }
 
     function drawEnemy(enemy) {
-      if (enemy.x > world.width) return;
+      if (enemy.x > stageWidth()) return;
       if (!enemySprite.complete || !enemySprite.naturalWidth) return;
       const fw = enemySprite.width / 8;
       const fh = enemySprite.height / 6;
@@ -1383,7 +1429,11 @@
     }
 
     function drawFlagGoal() {
-      const x = world.width - 205 - world.camera;
+      if (world.stage === 2) {
+        drawShopGoal();
+        return;
+      }
+      const x = stageWidth() - 205 - world.camera;
       const poleBottom = groundY();
       const poleTop = Math.max(112, poleBottom - 378);
       ctx.fillStyle = "#f7fbff";
@@ -1403,6 +1453,51 @@
       ctx.fillRect(x + 8, poleBottom + 8, 22, 10);
     }
 
+    function drawShopGoal() {
+      const goal = goalRect();
+      const x = Math.round(goal.x - world.camera);
+      const y = Math.round(goal.y);
+      const w = goal.w;
+      const h = goal.h;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      if (goalShopImage.complete && goalShopImage.naturalWidth) {
+        ctx.drawImage(goalShopImage, x, y, w, h);
+      } else {
+        const storm = ctx.createLinearGradient(x, y, x + w, y + h);
+        storm.addColorStop(0, "#fbfbf4");
+        storm.addColorStop(0.34, "#9a8173");
+        storm.addColorStop(0.66, "#1a1216");
+        storm.addColorStop(1, "#09070b");
+        ctx.fillStyle = storm;
+        ctx.fillRect(x, y + 20, w, h - 20);
+        ctx.fillStyle = "#fff8ef";
+        ctx.fillRect(x, y, w * 0.55, 54);
+        ctx.fillStyle = "#2b1718";
+        ctx.fillRect(x + w * 0.55, y + 48, w * 0.42, h - 66);
+        ctx.fillStyle = "#f3d165";
+        ctx.fillRect(x + 28, y + 92, w * 0.76, 42);
+        ctx.fillStyle = "#d11f25";
+        ctx.font = "900 34px system-ui, sans-serif";
+        ctx.fillText("PARK", x + 78, y + 126);
+        ctx.fillStyle = "rgba(255, 205, 68, 0.92)";
+        ctx.fillRect(x + 146, y + 54, 32, h - 54);
+        ctx.fillStyle = "#07090c";
+        ctx.fillRect(x + 34, y + 152, 120, 78);
+        ctx.fillRect(x + 206, y + 144, 76, 90);
+        ctx.strokeStyle = "#ffd438";
+        ctx.lineWidth = 4;
+        for (let i = 0; i < 4; i += 1) {
+          ctx.beginPath();
+          ctx.moveTo(x + 10 + i * 72, y + 4);
+          ctx.lineTo(x + 95 + i * 42, y - 36 + i * 16);
+          ctx.lineTo(x + 75 + i * 58, y + 30);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
     function drawStreetBackdrop() {
       const w = viewWidth();
       const h = viewHeight();
@@ -1412,9 +1507,10 @@
       if (activeBg.complete && activeBg.naturalWidth) {
         const sourceH = activeBg.naturalHeight;
         const sourceW = Math.min(activeBg.naturalWidth, sourceH * (w / h));
-        const maxCamera = Math.max(1, world.width - w);
+        const maxCamera = Math.max(1, stageWidth() - w);
         const progress = Math.max(0, Math.min(1, cam / maxCamera));
-        const sx = (activeBg.naturalWidth - sourceW) * progress;
+        const bgProgress = world.stage === 2 ? Math.min(progress, 0.72) : progress;
+        const sx = (activeBg.naturalWidth - sourceW) * bgProgress;
         ctx.drawImage(activeBg, sx, 0, sourceW, sourceH, 0, 0, w, h);
       } else {
         const sky = ctx.createLinearGradient(0, 0, 0, h);
