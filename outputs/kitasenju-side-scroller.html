@@ -1371,11 +1371,13 @@
       if (enemy.x > stageWidth()) return;
       const activeEnemySprite = world.stage === 1 && !enemy.stageOnly ? tigerEnemySprite : enemySprite;
       if (!activeEnemySprite.complete || !activeEnemySprite.naturalWidth) return;
-      const fw = activeEnemySprite.width / 8;
-      const fh = activeEnemySprite.height / 6;
-      const row = enemy.kind === "jumper" ? 2 : enemy.kind === "round" ? 1 : enemy.kind === "tall" ? 4 : 3;
-      const col = Math.abs(Math.floor((player.anim + enemy.x * 0.01) * (enemy.kind === "jumper" ? 9 : 7))) % 8;
       const isTiger = activeEnemySprite === tigerEnemySprite;
+      const fw = activeEnemySprite.width / 8;
+      const fh = activeEnemySprite.height / (isTiger ? 5 : 6);
+      const row = isTiger
+        ? (enemy.kind === "jumper" ? 2 : 1)
+        : (enemy.kind === "jumper" ? 2 : enemy.kind === "round" ? 1 : enemy.kind === "tall" ? 4 : 3);
+      const col = Math.abs(Math.floor((player.anim + enemy.x * 0.01) * (enemy.kind === "jumper" ? 9 : 7))) % 8;
       const drawW = isTiger ? enemy.w + 34 : enemy.w + 26;
       const drawH = isTiger ? enemy.h + 28 : enemy.h + 34;
       const dx = Math.round(enemy.x - world.camera - (drawW - enemy.w) / 2);
