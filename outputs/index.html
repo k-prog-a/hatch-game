@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>北千住ランナー</title>
   <style>
     :root {
@@ -686,16 +689,27 @@
 
     function settleAfterViewportChange() {
       resize();
+      setTimeout(tryEnterFullscreen, 80);
       setTimeout(resize, 160);
       setTimeout(resize, 420);
+      setTimeout(resize, 900);
     }
 
     function tryEnterFullscreen() {
       if (!isLandscapePhone() || document.fullscreenElement) return;
       const target = document.documentElement;
-      if (target.requestFullscreen) {
-        target.requestFullscreen().catch(() => {});
-      }
+      const request = target.requestFullscreen
+        || target.webkitRequestFullscreen
+        || target.msRequestFullscreen;
+      if (!request) return;
+      Promise.resolve(request.call(target))
+        .then(() => {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock("landscape").catch(() => {});
+          }
+          setTimeout(resize, 120);
+        })
+        .catch(() => {});
     }
 
     function resetMessageDisplay() {
@@ -1714,6 +1728,8 @@
 
     window.addEventListener("resize", settleAfterViewportChange);
     window.addEventListener("orientationchange", settleAfterViewportChange);
+    document.addEventListener("fullscreenchange", settleAfterViewportChange);
+    document.addEventListener("webkitfullscreenchange", settleAfterViewportChange);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", settleAfterViewportChange);
     window.addEventListener("keydown", (event) => {
       if (event.code === "ArrowLeft" || event.code === "KeyA") setKey("left", true);
@@ -1730,6 +1746,7 @@
       if (event.code === "ArrowUp" || event.code === "KeyW" || event.code === "Space") setKey("jump", false);
     });
     window.addEventListener("pointerdown", () => {
+      tryEnterFullscreen();
       if (world.ending) return;
       if (player.lives <= 0) restart();
       else if (world.finished || world.transitioning) return;
@@ -1748,6 +1765,7 @@
       button.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
+        tryEnterFullscreen();
         if (inputName === "secret") secretFly();
         else if (inputName === "attack") useDamekaneAttack();
         else if (inputName === "down") start();
