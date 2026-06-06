@@ -639,10 +639,9 @@
     }
 
     function goalRect() {
-      if (world.stage === 2) {
-        return { x: stageWidth() - 380, y: groundY() - 250, w: 320, h: 250 };
-      }
-      return { x: stageWidth() - 250, y: groundY() - 230, w: 110, h: 230 };
+      const w = 430;
+      const h = 272;
+      return { x: stageWidth() - w - 70, y: groundY() - h, w, h };
     }
 
     function groundY() {
@@ -1377,10 +1376,10 @@
       const row = enemy.kind === "jumper" ? 2 : enemy.kind === "round" ? 1 : enemy.kind === "tall" ? 4 : 3;
       const col = Math.abs(Math.floor((player.anim + enemy.x * 0.01) * (enemy.kind === "jumper" ? 9 : 7))) % 8;
       const isTiger = activeEnemySprite === tigerEnemySprite;
-      const drawW = isTiger ? enemy.w + 54 : enemy.w + 26;
-      const drawH = isTiger ? enemy.h + 42 : enemy.h + 34;
-      const dx = Math.round(enemy.x - world.camera - (isTiger ? 26 : 13));
-      const dy = Math.round(enemy.y - (isTiger ? 34 : 26));
+      const drawW = isTiger ? enemy.w + 34 : enemy.w + 26;
+      const drawH = isTiger ? enemy.h + 28 : enemy.h + 34;
+      const dx = Math.round(enemy.x - world.camera - (drawW - enemy.w) / 2);
+      const dy = Math.round(enemy.y + enemy.h - drawH);
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       if (enemy.vx < 0) {
@@ -1493,28 +1492,7 @@
     }
 
     function drawFlagGoal() {
-      if (world.stage === 2) {
-        drawShopGoal();
-        return;
-      }
-      const x = stageWidth() - 205 - world.camera;
-      const poleBottom = groundY();
-      const poleTop = Math.max(112, poleBottom - 378);
-      ctx.fillStyle = "#f7fbff";
-      ctx.fillRect(x, poleTop, 10, poleBottom - poleTop);
-      ctx.fillStyle = "#d9e8ff";
-      ctx.fillRect(x + 10, poleTop, 4, poleBottom - poleTop);
-      ctx.fillStyle = "#ffd438";
-      ctx.beginPath();
-      ctx.arc(x + 5, poleTop - 10, 18, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#ff4d68";
-      ctx.fillRect(x + 14, poleTop + 28, 94, 58);
-      ctx.fillStyle = "#7a4824";
-      ctx.fillRect(x - 34, poleBottom, 82, 22);
-      ctx.fillStyle = "#5d361d";
-      ctx.fillRect(x - 22, poleBottom + 8, 22, 10);
-      ctx.fillRect(x + 8, poleBottom + 8, 22, 10);
+      drawShopGoal();
     }
 
     function drawShopGoal() {
@@ -1525,6 +1503,10 @@
       const h = goal.h;
       ctx.save();
       ctx.imageSmoothingEnabled = true;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.42)";
+      ctx.beginPath();
+      ctx.ellipse(x + w / 2, groundY() + 4, w * 0.46, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
       if (goalShopImage.complete && goalShopImage.naturalWidth) {
         ctx.drawImage(goalShopImage, x, y, w, h);
       } else {
@@ -1573,7 +1555,7 @@
         const sourceW = Math.min(activeBg.naturalWidth, sourceH * (w / h));
         const maxCamera = Math.max(1, stageWidth() - w);
         const progress = Math.max(0, Math.min(1, cam / maxCamera));
-        const bgProgress = world.stage === 2 ? Math.min(progress, 0.72) : progress;
+        const bgProgress = Math.min(progress, world.stage === 2 ? 0.72 : 0.76);
         const sx = (activeBg.naturalWidth - sourceW) * bgProgress;
         ctx.drawImage(activeBg, sx, 0, sourceW, sourceH, 0, 0, w, h);
       } else {
