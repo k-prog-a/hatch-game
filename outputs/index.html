@@ -143,11 +143,21 @@
       line-height: 1.5;
     }
 
+    .message span[hidden] {
+      display: none;
+    }
+
     .message.game-over {
       width: min(520px, calc(100vw - 26px));
       padding: 8px;
       border-color: rgba(255, 255, 255, 0.28);
       background: rgba(0, 0, 0, 0.9);
+    }
+
+    .message.game-over strong {
+      margin: 4px 0 8px;
+      color: #fff;
+      text-shadow: 0 2px 0 #000;
     }
 
     .game-over-image {
@@ -312,6 +322,7 @@
       box-shadow: none;
       color: transparent;
       font-size: 0;
+      z-index: 4;
     }
 
     .control-hit:active {
@@ -319,14 +330,14 @@
       background: rgba(255, 255, 255, 0.08);
     }
 
-    .hit-up { left: 20.5%; top: 20%; width: 11%; height: 20%; }
-    .hit-left { left: 9%; top: 39%; width: 13%; height: 18%; }
-    .hit-right { left: 30%; top: 39%; width: 13%; height: 18%; }
-    .hit-down { left: 20.5%; top: 58%; width: 11%; height: 20%; }
-    .hit-x { left: 68%; top: 18%; width: 13%; height: 24%; }
-    .hit-y { left: 56%; top: 38%; width: 13%; height: 24%; }
-    .hit-a { left: 68%; top: 58%; width: 13%; height: 24%; }
-    .hit-b { left: 80%; top: 38%; width: 13%; height: 24%; }
+    .hit-up { left: 15.5%; top: 20%; width: 11%; height: 20%; }
+    .hit-left { left: 4%; top: 39%; width: 13%; height: 18%; }
+    .hit-right { left: 25%; top: 39%; width: 13%; height: 18%; }
+    .hit-down { left: 15.5%; top: 58%; width: 11%; height: 20%; }
+    .hit-x { left: 75%; top: 14%; width: 17%; height: 30%; }
+    .hit-y { left: 65%; top: 38%; width: 13%; height: 24%; }
+    .hit-a { left: 77%; top: 58%; width: 13%; height: 24%; }
+    .hit-b { left: 89%; top: 38%; width: 11%; height: 24%; }
 
     button:active {
       transform: translateY(1px);
@@ -396,9 +407,18 @@
       }
 
       .controls {
-        width: min(78vw, 760px);
+        width: min(98vw, 920px);
         max-height: calc(var(--remote-h) - 8px);
       }
+
+      .hit-up { left: 11.5%; top: 20%; width: 11%; height: 20%; }
+      .hit-left { left: 0.5%; top: 39%; width: 13%; height: 18%; }
+      .hit-right { left: 21%; top: 39%; width: 13%; height: 18%; }
+      .hit-down { left: 11.5%; top: 58%; width: 11%; height: 20%; }
+      .hit-x { left: 78%; top: 14%; width: 17%; height: 30%; }
+      .hit-y { left: 68%; top: 38%; width: 13%; height: 24%; }
+      .hit-a { left: 80%; top: 58%; width: 13%; height: 24%; }
+      .hit-b { left: 91%; top: 38%; width: 8.5%; height: 24%; }
     }
   </style>
 </head>
@@ -442,7 +462,7 @@
         <button class="control-hit hit-right" data-key="right" aria-label="右"></button>
         <button class="control-hit hit-down" data-key="down" aria-label="下"></button>
         <button class="control-hit hit-x" data-key="secret" aria-label="X"></button>
-        <button class="control-hit hit-y" data-key="down" aria-label="Y"></button>
+        <button class="control-hit hit-y" data-key="attack" aria-label="Y"></button>
         <button class="control-hit hit-a" data-key="jump" aria-label="A"></button>
         <button class="control-hit hit-b" data-key="jump" aria-label="B"></button>
       </div>
@@ -467,6 +487,8 @@
     sprite.src = "kitasenju-game-spritesheet.webp";
     const enemySprite = new Image();
     enemySprite.src = "flame-imp-game-spritesheet.png";
+    const tigerEnemySprite = new Image();
+    tigerEnemySprite.src = "white-tiger-game-v2-spritesheet.png";
     const bgImage = new Image();
     bgImage.src = "kitasenju-city-bg.jpeg";
     const nightBgImage = new Image();
@@ -510,6 +532,17 @@
       hurtTimer: 0,
       stunTimer: 0,
       anim: 0
+    };
+
+    const attack = {
+      active: false,
+      timer: 0,
+      duration: 0.34,
+      x: 0,
+      y: 0,
+      w: 196,
+      h: 70,
+      face: 1
     };
 
     const platforms = [
@@ -642,6 +675,15 @@
       }
     }
 
+    function keepPlayerOnGround() {
+      const gy = groundY();
+      if (player.y + player.h >= gy) {
+        player.y = gy - player.h;
+        if (player.vy > 0) player.vy = 0;
+        player.grounded = true;
+      }
+    }
+
     function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       currentDpr = dpr;
@@ -669,6 +711,8 @@
       messageEl.classList.remove("game-over");
       messageEl.querySelector("strong").hidden = false;
       messageEl.querySelector("span").hidden = false;
+      messageEl.querySelector("strong").textContent = "北千住へ走れ!";
+      messageEl.querySelector("span").textContent = "← → / A D で移動、Space / W / ↑ でジャンプ。小判を集めて右端ののれんへ。";
       gameOverImage.hidden = true;
     }
 
@@ -797,6 +841,15 @@
       burst(player.x + player.w / 2, player.y + player.h, "#ffd438", 16);
     }
 
+    function useDamekaneAttack() {
+      if (world.finished || world.ending || player.lives <= 0) return;
+      start();
+      attack.active = true;
+      attack.timer = attack.duration;
+      attack.face = player.face || 1;
+      playStompSound();
+    }
+
     function restart() {
       if (world.resetTimer) {
         clearTimeout(world.resetTimer);
@@ -805,6 +858,8 @@
       keys.left = false;
       keys.right = false;
       keys.jump = false;
+      attack.active = false;
+      attack.timer = 0;
       Object.assign(player, {
         x: 120,
         y: 0,
@@ -866,6 +921,8 @@
       keys.left = false;
       keys.right = false;
       keys.jump = false;
+      attack.active = false;
+      attack.timer = 0;
       player.x = 120;
       player.y = groundY() - player.h;
       player.vx = 0;
@@ -958,7 +1015,8 @@
         world.started = false;
         messageEl.classList.add("game-over");
         messageEl.hidden = false;
-        messageEl.querySelector("strong").hidden = true;
+        messageEl.querySelector("strong").hidden = false;
+        messageEl.querySelector("strong").textContent = "もう一回";
         messageEl.querySelector("span").hidden = true;
         gameOverImage.hidden = false;
       }
@@ -1042,14 +1100,18 @@
 
       player.vy += world.gravity * dt;
       player.x += player.vx * dt;
-      player.y += player.vy * dt;
+      player.y = Math.min(player.y + player.vy * dt, groundY() - player.h);
       player.x = Math.max(0, Math.min(stageWidth() - player.w, player.x));
+      keepPlayerOnGround();
       standOnPlatforms(player, dt);
+      keepPlayerOnGround();
 
-      if (player.y + player.h > groundY() + 80) {
-        player.y = groundY() - player.h;
-        player.vy = 0;
-        player.grounded = true;
+      if (attack.active) {
+        attack.timer -= dt;
+        attack.x = player.face >= 0 ? player.x + player.w - 8 : player.x - attack.w + 8;
+        attack.y = Math.max(36, player.y - 28);
+        attack.face = player.face || attack.face;
+        if (attack.timer <= 0) attack.active = false;
       }
 
       for (const enemy of enemies) {
@@ -1074,6 +1136,14 @@
             enemy.vx = (enemy.vx < 0 ? -1 : 1) * (world.stage === 2 ? 145 : 115);
             enemy.jumpClock = 0.95 + Math.random() * 0.45;
           }
+        }
+        if (attack.active && rectsOverlap(attack, enemy)) {
+          const hitX = enemy.x;
+          const hitY = enemy.y;
+          enemy.x = world.width + 9999;
+          attack.timer = Math.max(attack.timer, 0.12);
+          burst(hitX + enemy.w / 2, hitY + enemy.h / 2, "#ffffff", 16);
+          continue;
         }
         if (rectsOverlap(player, enemy)) {
           if (player.vy > 120 && player.y + player.h - enemy.y < 32) {
@@ -1111,6 +1181,7 @@
           player.vx = 0;
         }
       }
+      keepPlayerOnGround();
 
       for (const coin of coins) {
         coin.spin += dt * 9;
@@ -1308,23 +1379,25 @@
 
     function drawEnemy(enemy) {
       if (enemy.x > stageWidth()) return;
-      if (!enemySprite.complete || !enemySprite.naturalWidth) return;
-      const fw = enemySprite.width / 8;
-      const fh = enemySprite.height / 6;
+      const activeEnemySprite = world.stage === 1 && !enemy.stageOnly ? tigerEnemySprite : enemySprite;
+      if (!activeEnemySprite.complete || !activeEnemySprite.naturalWidth) return;
+      const fw = activeEnemySprite.width / 8;
+      const fh = activeEnemySprite.height / 6;
       const row = enemy.kind === "jumper" ? 2 : enemy.kind === "round" ? 1 : enemy.kind === "tall" ? 4 : 3;
       const col = Math.abs(Math.floor((player.anim + enemy.x * 0.01) * (enemy.kind === "jumper" ? 9 : 7))) % 8;
-      const drawW = enemy.w + 26;
-      const drawH = enemy.h + 34;
-      const dx = Math.round(enemy.x - world.camera - 13);
-      const dy = Math.round(enemy.y - 26);
+      const isTiger = activeEnemySprite === tigerEnemySprite;
+      const drawW = isTiger ? enemy.w + 54 : enemy.w + 26;
+      const drawH = isTiger ? enemy.h + 42 : enemy.h + 34;
+      const dx = Math.round(enemy.x - world.camera - (isTiger ? 26 : 13));
+      const dy = Math.round(enemy.y - (isTiger ? 34 : 26));
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       if (enemy.vx < 0) {
         ctx.translate(dx + drawW, dy);
         ctx.scale(-1, 1);
-        ctx.drawImage(enemySprite, col * fw, row * fh, fw, fh, 0, 0, drawW, drawH);
+        ctx.drawImage(activeEnemySprite, col * fw, row * fh, fw, fh, 0, 0, drawW, drawH);
       } else {
-        ctx.drawImage(enemySprite, col * fw, row * fh, fw, fh, dx, dy, drawW, drawH);
+        ctx.drawImage(activeEnemySprite, col * fw, row * fh, fw, fh, dx, dy, drawW, drawH);
       }
       ctx.restore();
     }
@@ -1561,6 +1634,42 @@
       ctx.restore();
     }
 
+    function drawDamekaneAttack() {
+      if (!attack.active) return;
+      const x = Math.round(attack.x - world.camera);
+      const y = Math.round(attack.y);
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = Math.min(1, attack.timer / 0.08);
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#101010";
+      ctx.lineWidth = 4;
+      ctx.fillRect(x, y, attack.w, attack.h);
+      ctx.strokeRect(x, y, attack.w, attack.h);
+      ctx.beginPath();
+      if (attack.face >= 0) {
+        ctx.moveTo(x + 16, y + attack.h - 8);
+        ctx.lineTo(x - 18, y + attack.h + 18);
+        ctx.lineTo(x + 48, y + attack.h - 4);
+      } else {
+        ctx.moveTo(x + attack.w - 16, y + attack.h - 8);
+        ctx.lineTo(x + attack.w + 18, y + attack.h + 18);
+        ctx.lineTo(x + attack.w - 48, y + attack.h - 4);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#101010";
+      ctx.font = "900 28px 'MS Gothic', 'Yu Gothic', monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("ダメカネ", x + attack.w / 2, y + attack.h / 2);
+      ctx.textAlign = "start";
+      ctx.textBaseline = "alphabetic";
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
     function drawPlayer() {
       const fw = sprite.width / 8;
       const fh = sprite.height / 6;
@@ -1603,6 +1712,7 @@
       coins.forEach(drawCoin);
       enemies.forEach(drawEnemy);
       drawFlagGoal();
+      drawDamekaneAttack();
       particles.forEach((p) => {
         ctx.globalAlpha = Math.max(0, p.life * 1.8);
         ctx.fillStyle = p.color;
@@ -1629,6 +1739,8 @@
       if (event.code === "ArrowLeft" || event.code === "KeyA") setKey("left", true);
       if (event.code === "ArrowRight" || event.code === "KeyD") setKey("right", true);
       if (event.code === "ArrowUp" || event.code === "KeyW" || event.code === "Space") setKey("jump", true);
+      if (event.code === "KeyX") secretFly();
+      if (event.code === "KeyY") useDamekaneAttack();
       if (event.code === "KeyT") secretFly();
       if (event.code === "KeyR") restart();
     });
@@ -1654,18 +1766,26 @@
       const inputName = name === "up" ? "jump" : name;
       button.addEventListener("pointerdown", (event) => {
         event.preventDefault();
+        event.stopPropagation();
         if (inputName === "secret") secretFly();
+        else if (inputName === "attack") useDamekaneAttack();
         else if (inputName === "down") start();
         else setKey(inputName, true);
       });
-      button.addEventListener("pointerup", () => {
-        if (inputName !== "down" && inputName !== "secret") setKey(inputName, false);
+      button.addEventListener("pointerup", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (inputName !== "down" && inputName !== "secret" && inputName !== "attack") setKey(inputName, false);
       });
-      button.addEventListener("pointercancel", () => {
-        if (inputName !== "down" && inputName !== "secret") setKey(inputName, false);
+      button.addEventListener("pointercancel", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (inputName !== "down" && inputName !== "secret" && inputName !== "attack") setKey(inputName, false);
       });
-      button.addEventListener("pointerleave", () => {
-        if (inputName !== "down" && inputName !== "secret") setKey(inputName, false);
+      button.addEventListener("pointerleave", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (inputName !== "down" && inputName !== "secret" && inputName !== "attack") setKey(inputName, false);
       });
     });
 
