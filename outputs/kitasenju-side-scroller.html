@@ -330,10 +330,10 @@
       background: rgba(255, 255, 255, 0.08);
     }
 
-    .hit-up { left: 12.1%; top: 34.2%; width: 9.2%; height: 19.8%; }
-    .hit-left { left: 4.2%; top: 49%; width: 10.6%; height: 16.8%; }
-    .hit-right { left: 18%; top: 49%; width: 10.6%; height: 16.8%; }
-    .hit-down { left: 12.1%; top: 60.7%; width: 9.2%; height: 18.6%; }
+    .hit-up { left: 10.5%; top: 35.5%; width: 12.4%; height: 18.8%; }
+    .hit-left { left: 4%; top: 48%; width: 12.6%; height: 18.5%; }
+    .hit-right { left: 17%; top: 48%; width: 12.6%; height: 18.5%; }
+    .hit-down { left: 10.5%; top: 61%; width: 12.4%; height: 18.8%; }
     .hit-x { left: 80.2%; top: 31.6%; width: 10.2%; height: 17.2%; }
     .hit-y { left: 73.2%; top: 46.8%; width: 9.8%; height: 17.2%; }
     .hit-a { left: 80.6%; top: 62.6%; width: 9.8%; height: 17.4%; }
@@ -500,6 +500,7 @@
       started: false,
       finished: false,
       stage: 1,
+      transitioning: false,
       bonusCoins: 0,
       nextHealAt: 10,
       ending: false,
@@ -885,6 +886,7 @@
       world.started = true;
       world.finished = false;
       world.stage = 1;
+      world.transitioning = false;
       world.bonusCoins = 0;
       world.nextHealAt = 10;
       world.ending = false;
@@ -905,6 +907,7 @@
       }
       world.stage = 2;
       world.finished = false;
+      world.transitioning = false;
       world.started = true;
       world.camera = 0;
       world.startTime = performance.now();
@@ -942,6 +945,7 @@
       world.ending = true;
       world.started = false;
       world.finished = true;
+      world.transitioning = false;
       keys.left = false;
       keys.right = false;
       keys.jump = false;
@@ -1202,6 +1206,7 @@
       const goal = goalRect();
       if (rectsOverlap(player, goal)) {
         world.finished = true;
+        world.transitioning = true;
         world.started = false;
         player.vx = 0;
         player.vy = 0;
@@ -1726,7 +1731,8 @@
     });
     window.addEventListener("pointerdown", () => {
       if (world.ending) return;
-      if (player.lives <= 0 || world.finished) restart();
+      if (player.lives <= 0) restart();
+      else if (world.finished || world.transitioning) return;
       else start();
     });
 
