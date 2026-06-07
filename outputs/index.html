@@ -504,6 +504,7 @@
       finished: false,
       stage: 1,
       transitioning: false,
+      autoRunSpeed: 235,
       bonusCoins: 0,
       nextHealAt: 10,
       ending: false,
@@ -977,8 +978,20 @@
 
     function setKey(name, value) {
       if (world.ending) return;
+      if (name === "left" || name === "right") return;
       keys[name] = value;
       if (value) start();
+    }
+
+    function jumpPlayer() {
+      if (world.finished || world.ending || player.lives <= 0) return;
+      start();
+      if (player.grounded && player.stunTimer <= 0) {
+        player.vy = -player.jump;
+        player.grounded = false;
+        playJumpSound();
+        burst(player.x + player.w / 2, player.y + player.h, "#28f0d7", 8);
+      }
     }
 
     function rectsOverlap(a, b) {
@@ -1016,7 +1029,7 @@
       player.hurtTimer = 0.75;
       player.stunTimer = 0.55;
       player.vy = -620;
-      player.vx = -player.face * 250;
+      player.vx = 0;
       playHitSound();
       burst(player.x + player.w / 2, player.y + player.h / 2, "#ff4d68", 16);
       if (player.lives <= 0) {
@@ -1095,15 +1108,12 @@
       player.stunTimer = Math.max(0, player.stunTimer - dt);
       player.anim += dt;
 
-      const dir = player.stunTimer > 0 ? 0 : (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-      player.vx += (dir * player.speed - player.vx) * Math.min(1, 14 * dt);
-      if (dir) player.face = dir;
+      const targetSpeed = player.stunTimer > 0 ? 0 : (world.stage === 2 ? world.autoRunSpeed + 35 : world.autoRunSpeed);
+      player.vx += (targetSpeed - player.vx) * Math.min(1, 14 * dt);
+      player.face = 1;
 
       if (keys.jump && player.grounded && player.stunTimer <= 0) {
-        player.vy = -player.jump;
-        player.grounded = false;
-        playJumpSound();
-        burst(player.x + player.w / 2, player.y + player.h, "#28f0d7", 8);
+        jumpPlayer();
       }
 
       player.vy += world.gravity * dt;
@@ -1726,6 +1736,10 @@
       requestAnimationFrame(frame);
     }
 
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    let swipeStartTime = 0;
+
     window.addEventListener("resize", settleAfterViewportChange);
     window.addEventListener("orientationchange", settleAfterViewportChange);
     document.addEventListener("fullscreenchange", settleAfterViewportChange);
@@ -1745,12 +1759,23 @@
       if (event.code === "ArrowRight" || event.code === "KeyD") setKey("right", false);
       if (event.code === "ArrowUp" || event.code === "KeyW" || event.code === "Space") setKey("jump", false);
     });
-    window.addEventListener("pointerdown", () => {
+    window.addEventListener("pointerdown", (event) => {
+      swipeStartX = event.clientX;
+      swipeStartY = event.clientY;
+      swipeStartTime = performance.now();
       tryEnterFullscreen();
       if (world.ending) return;
       if (player.lives <= 0) restart();
       else if (world.finished || world.transitioning) return;
       else start();
+    });
+    window.addEventListener("pointerup", (event) => {
+      const dx = event.clientX - swipeStartX;
+      const dy = event.clientY - swipeStartY;
+      const age = performance.now() - swipeStartTime;
+      if (age < 650 && dy < -42 && Math.abs(dx) < 150) {
+        jumpPlayer();
+      }
     });
 
     presentButton.addEventListener("pointerdown", (event) => {
