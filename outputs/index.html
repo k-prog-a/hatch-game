@@ -244,9 +244,8 @@
       left: 0;
       right: 0;
       bottom: 0;
-      display: none;
+      display: none !important;
       height: var(--remote-h);
-      display: grid;
       place-items: center;
       padding: 14px clamp(14px, 4vw, 34px) max(14px, env(safe-area-inset-bottom));
       background:
@@ -266,6 +265,13 @@
       font-size: 13px;
       text-align: center;
       z-index: 2;
+    }
+
+    footer,
+    .controls,
+    .hint,
+    .control-hit {
+      display: none !important;
     }
 
     .controls {
