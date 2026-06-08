@@ -1244,7 +1244,8 @@
         if (p.life <= 0) particles.splice(i, 1);
       }
 
-      world.camera += (player.x - world.camera - viewWidth() * 0.38) * Math.min(1, 6 * dt);
+      const cameraLead = isLandscapePhone() ? 0.20 : 0.24;
+      world.camera += (player.x - world.camera - viewWidth() * cameraLead) * Math.min(1, 6 * dt);
       world.camera = Math.max(0, Math.min(stageWidth() - viewWidth(), world.camera));
 
       const goal = goalRect();
@@ -1797,7 +1798,7 @@
       const age = performance.now() - swipeStartTime;
       if (age < 650) {
         if (dy < -42 && Math.abs(dx) < 150) {
-          jumpPlayer();
+          secretFly();
         } else if (dx > 48 && Math.abs(dy) < 135) {
           useDamekaneAttack();
         } else if (dy > 48 && Math.abs(dx) < 150) {
