@@ -498,7 +498,7 @@
     const goalShopImage = new Image();
     goalShopImage.src = "goal-shop.png";
     const damekaneAttackImage = new Image();
-    damekaneAttackImage.src = "damekane-attack-bubble.png";
+    damekaneAttackImage.src = "damekane-attack-bubble.png?v=20260609-0153";
 
     const keys = { left: false, right: false, jump: false };
     let audioCtx = null;
@@ -536,6 +536,7 @@
       hurtTimer: 0,
       stunTimer: 0,
       crouchTimer: 0,
+      diveTimer: 0,
       anim: 0
     };
 
@@ -870,6 +871,11 @@
       if (player.grounded) {
         player.crouchTimer = 0.65;
         burst(player.x + player.w / 2, player.y + player.h, "#d8c18e", 6);
+      } else if (player.stunTimer <= 0) {
+        player.crouchTimer = 0.55;
+        player.diveTimer = 0.55;
+        player.vy = Math.max(player.vy, 1450);
+        burst(player.x + player.w / 2, player.y + player.h, "#ffffff", 8);
       }
     }
 
@@ -894,6 +900,7 @@
         hurtTimer: 0,
         stunTimer: 0,
         crouchTimer: 0,
+        diveTimer: 0,
         anim: 0
       });
       layoutGame();
@@ -957,6 +964,7 @@
       player.hurtTimer = 0;
       player.stunTimer = 0;
       player.crouchTimer = 0;
+      player.diveTimer = 0;
       blocks.forEach((block) => {
         block.used = false;
         block.broken = false;
@@ -1126,6 +1134,7 @@
       player.hurtTimer = Math.max(0, player.hurtTimer - dt);
       player.stunTimer = Math.max(0, player.stunTimer - dt);
       player.crouchTimer = Math.max(0, player.crouchTimer - dt);
+      player.diveTimer = Math.max(0, player.diveTimer - dt);
       player.anim += dt;
 
       const targetSpeed = player.stunTimer > 0 ? 0 : (world.stage === 2 ? world.autoRunSpeed + 35 : world.autoRunSpeed);
@@ -1141,8 +1150,10 @@
       player.y = Math.min(player.y + player.vy * dt, groundY() - player.h);
       player.x = Math.max(0, Math.min(stageWidth() - player.w, player.x));
       keepPlayerOnGround();
+      if (player.grounded) player.diveTimer = 0;
       standOnPlatforms(player, dt);
       keepPlayerOnGround();
+      if (player.grounded) player.diveTimer = 0;
 
       if (attack.active) {
         attack.timer -= dt;
@@ -1184,13 +1195,18 @@
           continue;
         }
         if (rectsOverlap(player, enemy)) {
-          if (player.vy > 120 && player.y + player.h - enemy.y < 32) {
+          const playerBottom = player.y + player.h;
+          const stompFromAbove = player.vy > 120 && playerBottom - enemy.y < 42;
+          const divingStomp = player.diveTimer > 0 && player.vy > 300 && playerBottom <= enemy.y + enemy.h * 0.82;
+          if (stompFromAbove || divingStomp) {
             const stompX = enemy.x;
             const stompY = enemy.y;
             enemy.x = world.width + 9999;
-            player.vy = -620;
+            player.vy = divingStomp ? -360 : -620;
+            player.diveTimer = 0;
+            player.crouchTimer = Math.max(player.crouchTimer, 0.18);
             playStompSound();
-            burst(stompX, stompY, "#ffd438", 12);
+            burst(stompX, stompY, divingStomp ? "#ffffff" : "#ffd438", divingStomp ? 18 : 12);
           } else {
             hurt();
           }
@@ -1701,7 +1717,7 @@
         col = Math.abs(Math.floor(player.anim * 4)) % 8;
       }
 
-      const isCrouching = player.crouchTimer > 0 && player.grounded;
+      const isCrouching = player.crouchTimer > 0 && (player.grounded || player.diveTimer > 0);
       const drawW = player.w + (isCrouching ? 38 : 30);
       const drawH = isCrouching ? Math.round((player.h + 20) * 0.68) : player.h + 20;
       const dx = Math.round(player.x - world.camera - 15);
