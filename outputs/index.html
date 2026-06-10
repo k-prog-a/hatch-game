@@ -491,12 +491,16 @@
     tigerEnemySprite.src = "white-tiger-game-v2-spritesheet.png";
     const bgImage = new Image();
     bgImage.src = "kitasenju-city-bg.jpeg";
+    const stage15BgImage = new Image();
+    stage15BgImage.src = "stage15-bg.png";
     const nightBgImage = new Image();
     nightBgImage.src = "kitasenju-night-bg.png";
     const coinImage = new Image();
     coinImage.src = "sss-coin-transparent.png";
     const goalShopImage = new Image();
     goalShopImage.src = "goal-shop.png";
+    const stage15GoalImage = new Image();
+    stage15GoalImage.src = "stage15-goal-park.png";
     const damekaneAttackImage = new Image();
     damekaneAttackImage.src = "damekane-attack-bubble.png?v=20260609-0153";
 
@@ -504,7 +508,7 @@
     let audioCtx = null;
     const world = {
       width: 8400,
-      stageWidths: { 1: 4200, 2: 8400 },
+      stageWidths: { 1: 4200, 1.5: 5000, 2: 8400 },
       height: 720,
       gravity: 2300,
       camera: 0,
@@ -513,6 +517,7 @@
       stage: 1,
       transitioning: false,
       autoRunSpeed: 235,
+      coinBank: 0,
       bonusCoins: 0,
       nextHealAt: 10,
       ending: false,
@@ -615,7 +620,37 @@
       };
     });
 
-    enemies.push(...stageTwoExtraEnemies);
+    const stageOneHalfEnemies = Array.from({ length: 14 }, (_, i) => {
+      const startX = 620 + i * 315 + (i % 3) * 54;
+      const startVx = i % 2 === 0 ? -105 : 115;
+      const spriteType = i % 2 === 0 ? "tiger" : "bird";
+      const kind = i % 4 === 0 ? "jumper" : i % 3 === 0 ? "round" : "square";
+      const size = spriteType === "tiger"
+        ? (kind === "jumper" ? { w: 54, h: 50 } : { w: 58, h: 48 })
+        : (kind === "jumper" ? { w: 50, h: 52 } : { w: 48, h: 48 });
+      const min = Math.max(120, startX - 150);
+      const max = Math.min(world.stageWidths[1.5] - 120, startX + 230);
+      return {
+        x: world.width + 9999,
+        startX,
+        y: 0,
+        w: size.w,
+        h: size.h,
+        vx: startVx,
+        startVx,
+        vy: 0,
+        min,
+        max,
+        startMin: min,
+        startMax: max,
+        kind,
+        spriteType,
+        stageOnly: 1.5,
+        jumpClock: 0.28 + (i % 5) * 0.16
+      };
+    });
+
+    enemies.push(...stageOneHalfEnemies, ...stageTwoExtraEnemies);
 
     const blocks = Array.from({ length: 18 }, (_, i) => ({
       x: 760 + i * 430 + (i % 4) * 56,
@@ -651,6 +686,41 @@
 
     function stageWidth() {
       return world.stageWidths[world.stage] || world.width;
+    }
+
+    function isEnemyActiveForStage(enemy) {
+      if (world.stage === 1) return !enemy.stageOnly;
+      return enemy.stageOnly === world.stage;
+    }
+
+    function resetEnemyForStage(enemy, index) {
+      if (!isEnemyActiveForStage(enemy)) {
+        enemy.x = world.width + 9999;
+        enemy.y = 0;
+        enemy.vx = enemy.startVx;
+        enemy.vy = 0;
+        return;
+      }
+      const offset = world.stage === 2 && !enemy.stageOnly ? 360 + (index % 3) * 80 : 0;
+      enemy.x = enemy.startX + offset;
+      enemy.y = 0;
+      enemy.vx = enemy.startVx * (world.stage === 2 ? 1.15 : 1);
+      enemy.vy = 0;
+      enemy.min = enemy.startMin + offset;
+      enemy.max = enemy.startMax + offset;
+      enemy.grounded = false;
+      enemy.jumpClock = 0.25 + (index % 5) * 0.18;
+    }
+
+    function resetStageObjects() {
+      layoutGame();
+      coins.forEach((coin) => { coin.got = false; });
+      blocks.forEach((block) => {
+        block.used = false;
+        block.broken = false;
+        block.bump = 0;
+      });
+      enemies.forEach(resetEnemyForStage);
     }
 
     function goalRect() {
@@ -903,35 +973,21 @@
         diveTimer: 0,
         anim: 0
       });
-      layoutGame();
-      player.y = groundY() - player.h;
-      player.grounded = true;
-      coins.forEach((coin) => { coin.got = false; });
-      blocks.forEach((block) => {
-        block.used = false;
-        block.broken = false;
-        block.bump = 0;
-      });
-      enemies.forEach((enemy) => {
-        enemy.x = enemy.stageOnly === 2 ? world.width + 9999 : enemy.startX;
-        enemy.y = 0;
-        enemy.vx = enemy.startVx;
-        enemy.vy = 0;
-        enemy.min = enemy.startMin;
-        enemy.max = enemy.startMax;
-        enemy.jumpClock = 0.5;
-      });
-      particles.length = 0;
       world.camera = 0;
       world.started = true;
       world.finished = false;
       world.stage = 1;
       world.transitioning = false;
+      world.coinBank = 0;
       world.bonusCoins = 0;
       world.nextHealAt = 10;
       world.ending = false;
       world.startTime = performance.now();
       world.elapsed = 0;
+      resetStageObjects();
+      player.y = groundY() - player.h;
+      player.grounded = true;
+      particles.length = 0;
       playBgm();
       resetMessageDisplay();
       messageEl.hidden = true;
@@ -940,12 +996,13 @@
       presentImage.hidden = true;
     }
 
-    function advanceStageTwo() {
+    function advanceToStage(stage) {
       if (world.resetTimer) {
         clearTimeout(world.resetTimer);
         world.resetTimer = null;
       }
-      world.stage = 2;
+      world.coinBank += coins.filter((coin) => coin.got).length;
+      world.stage = stage;
       world.finished = false;
       world.transitioning = false;
       world.started = true;
@@ -965,22 +1022,16 @@
       player.stunTimer = 0;
       player.crouchTimer = 0;
       player.diveTimer = 0;
-      blocks.forEach((block) => {
-        block.used = false;
-        block.broken = false;
-        block.bump = 0;
-      });
-      enemies.forEach((enemy, i) => {
-        const offset = enemy.stageOnly === 2 ? 0 : 360 + (i % 3) * 80;
-        enemy.x = enemy.startX + offset;
-        enemy.y = 0;
-        enemy.vx = enemy.startVx * 1.15;
-        enemy.vy = 0;
-        enemy.min = enemy.startMin + offset;
-        enemy.max = enemy.startMax + offset;
-        enemy.jumpClock = 0.35 + (i % 3) * 0.24;
-      });
+      resetStageObjects();
       messageEl.hidden = true;
+    }
+
+    function advanceStageOneHalf() {
+      advanceToStage(1.5);
+    }
+
+    function advanceStageTwo() {
+      advanceToStage(2);
     }
 
     function showEnding() {
@@ -1105,7 +1156,7 @@
     }
 
     function totalCoinsCollected() {
-      return coins.filter((c) => c.got).length + world.bonusCoins;
+      return world.coinBank + coins.filter((c) => c.got).length + world.bonusCoins;
     }
 
     function totalCoinsAvailable() {
@@ -1137,7 +1188,13 @@
       player.diveTimer = Math.max(0, player.diveTimer - dt);
       player.anim += dt;
 
-      const targetSpeed = player.stunTimer > 0 ? 0 : (world.stage === 2 ? world.autoRunSpeed + 35 : world.autoRunSpeed);
+      const targetSpeed = player.stunTimer > 0
+        ? 0
+        : world.stage === 2
+          ? world.autoRunSpeed + 35
+          : world.stage === 1.5
+            ? world.autoRunSpeed + 18
+            : world.autoRunSpeed;
       player.vx += (targetSpeed - player.vx) * Math.min(1, 14 * dt);
       player.face = 1;
 
@@ -1164,6 +1221,7 @@
       }
 
       for (const enemy of enemies) {
+        if (!isEnemyActiveForStage(enemy)) continue;
         if (enemy.x > stageWidth()) continue;
         enemy.vy = (enemy.vy || 0) + world.gravity * dt;
         enemy.x += enemy.vx * dt;
@@ -1182,7 +1240,7 @@
           enemy.jumpClock -= dt;
           if (enemy.jumpClock <= 0 && enemy.grounded) {
             enemy.vy = -820;
-            enemy.vx = (enemy.vx < 0 ? -1 : 1) * (world.stage === 2 ? 145 : 115);
+            enemy.vx = (enemy.vx < 0 ? -1 : 1) * (world.stage === 2 ? 145 : world.stage === 1.5 ? 130 : 115);
             enemy.jumpClock = 0.95 + Math.random() * 0.45;
           }
         }
@@ -1207,6 +1265,9 @@
             player.crouchTimer = Math.max(player.crouchTimer, 0.18);
             playStompSound();
             burst(stompX, stompY, divingStomp ? "#ffffff" : "#ffd438", divingStomp ? 18 : 12);
+          } else if (world.stage === 2 && enemy.stageOnly === 2) {
+            player.x = Math.min(player.x, enemy.x - player.w - 2);
+            player.vx *= 0.65;
           } else {
             hurt();
           }
@@ -1277,8 +1338,10 @@
         playFanfareSound();
         messageEl.hidden = true;
         messageEl.querySelector("strong").textContent = "ゴール!";
-        messageEl.querySelector("span").textContent = `コイン ${coins.filter((c) => c.got).length}/${coins.length} タイム ${world.elapsed.toFixed(1)}秒`;
+        messageEl.querySelector("span").textContent = `コイン ${totalCoinsCollected()}/${totalCoinsAvailable()} タイム ${world.elapsed.toFixed(1)}秒`;
         if (world.stage === 1) {
+          world.resetTimer = setTimeout(advanceStageOneHalf, 1800);
+        } else if (world.stage === 1.5) {
           world.resetTimer = setTimeout(advanceStageTwo, 1800);
         } else {
           world.resetTimer = setTimeout(showEnding, 1800);
@@ -1434,23 +1497,34 @@
     }
 
     function drawEnemy(enemy) {
+      if (!isEnemyActiveForStage(enemy)) return;
       if (enemy.x > stageWidth()) return;
-      const activeEnemySprite = world.stage === 1 && !enemy.stageOnly ? tigerEnemySprite : enemySprite;
+      const activeEnemySprite = world.stage === 1 && !enemy.stageOnly
+        ? tigerEnemySprite
+        : world.stage === 1.5 && enemy.spriteType === "tiger"
+          ? tigerEnemySprite
+          : world.stage === 1.5 && enemy.spriteType === "bird"
+            ? sprite
+            : enemySprite;
       if (!activeEnemySprite.complete || !activeEnemySprite.naturalWidth) return;
       const isTiger = activeEnemySprite === tigerEnemySprite;
+      const isBird = activeEnemySprite === sprite;
       const fw = activeEnemySprite.width / 8;
       const fh = activeEnemySprite.height / (isTiger ? 5 : 6);
       const row = isTiger
         ? (enemy.kind === "jumper" ? 2 : 1)
-        : (enemy.kind === "jumper" ? 2 : enemy.kind === "round" ? 1 : enemy.kind === "tall" ? 4 : 3);
+        : isBird
+          ? (enemy.kind === "jumper" ? 2 : 1)
+          : (enemy.kind === "jumper" ? 2 : enemy.kind === "round" ? 1 : enemy.kind === "tall" ? 4 : 3);
       const col = Math.abs(Math.floor((player.anim + enemy.x * 0.01) * (enemy.kind === "jumper" ? 9 : 7))) % 8;
-      const drawW = isTiger ? enemy.w + 34 : enemy.w + 26;
-      const drawH = isTiger ? enemy.h + 28 : enemy.h + 34;
+      const drawW = isTiger ? enemy.w + 34 : isBird ? enemy.w + 30 : enemy.w + 26;
+      const drawH = isTiger ? enemy.h + 28 : isBird ? enemy.h + 26 : enemy.h + 34;
       const dx = Math.round(enemy.x - world.camera - (drawW - enemy.w) / 2);
       const dy = Math.round(enemy.y + enemy.h - drawH);
+      const shouldFlipEnemy = isBird ? enemy.vx >= 0 : enemy.vx < 0;
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      if (enemy.vx < 0) {
+      if (shouldFlipEnemy) {
         ctx.translate(dx + drawW, dy);
         ctx.scale(-1, 1);
         ctx.drawImage(activeEnemySprite, col * fw, row * fh, fw, fh, 0, 0, drawW, drawH);
@@ -1572,8 +1646,9 @@
       ctx.beginPath();
       ctx.ellipse(x + w / 2, groundY() + 4, w * 0.46, 16, 0, 0, Math.PI * 2);
       ctx.fill();
-      if (goalShopImage.complete && goalShopImage.naturalWidth) {
-        ctx.drawImage(goalShopImage, x, y, w, h);
+      const activeGoalImage = world.stage === 1.5 ? stage15GoalImage : goalShopImage;
+      if (activeGoalImage.complete && activeGoalImage.naturalWidth) {
+        ctx.drawImage(activeGoalImage, x, y, w, h);
       } else {
         const storm = ctx.createLinearGradient(x, y, x + w, y + h);
         storm.addColorStop(0, "#fbfbf4");
@@ -1614,13 +1689,13 @@
       const h = viewHeight();
       const cam = world.camera;
       const gy = groundY();
-      const activeBg = world.stage === 2 ? nightBgImage : bgImage;
+      const activeBg = world.stage === 2 ? nightBgImage : world.stage === 1.5 ? stage15BgImage : bgImage;
       if (activeBg.complete && activeBg.naturalWidth) {
         const sourceH = activeBg.naturalHeight;
         const sourceW = Math.min(activeBg.naturalWidth, sourceH * (w / h));
         const maxCamera = Math.max(1, stageWidth() - w);
         const progress = Math.max(0, Math.min(1, cam / maxCamera));
-        const bgProgress = Math.min(progress, world.stage === 2 ? 0.72 : 0.76);
+        const bgProgress = Math.min(progress, world.stage === 2 ? 0.72 : world.stage === 1.5 ? 0.82 : 0.76);
         const sx = (activeBg.naturalWidth - sourceW) * bgProgress;
         ctx.drawImage(activeBg, sx, 0, sourceW, sourceH, 0, 0, w, h);
       } else {
@@ -1699,8 +1774,10 @@
       ctx.restore();
     }
     function drawPlayer() {
-      const fw = sprite.width / 8;
-      const fh = sprite.height / 6;
+      const activePlayerSprite = world.stage === 1.5 ? enemySprite : sprite;
+      if (!activePlayerSprite.complete || !activePlayerSprite.naturalWidth) return;
+      const fw = activePlayerSprite.width / 8;
+      const fh = activePlayerSprite.height / 6;
       let row = 0;
       let col = 0;
       if (!player.grounded) {
@@ -1718,18 +1795,22 @@
       }
 
       const isCrouching = player.crouchTimer > 0 && (player.grounded || player.diveTimer > 0);
-      const drawW = player.w + (isCrouching ? 38 : 30);
-      const drawH = isCrouching ? Math.round((player.h + 20) * 0.68) : player.h + 20;
+      const isImpPlayer = activePlayerSprite === enemySprite;
+      const drawW = isImpPlayer ? player.w + (isCrouching ? 54 : 44) : player.w + (isCrouching ? 38 : 30);
+      const drawH = isImpPlayer
+        ? (isCrouching ? Math.round((player.h + 34) * 0.72) : player.h + 34)
+        : (isCrouching ? Math.round((player.h + 20) * 0.68) : player.h + 20);
       const dx = Math.round(player.x - world.camera - 15);
       const dy = Math.round(player.y + player.h - drawH);
+      const shouldFlipPlayer = isImpPlayer ? player.face < 0 : player.face > 0;
       ctx.save();
       if (player.hurtTimer > 0 && Math.floor(player.hurtTimer * 18) % 2 === 0) ctx.globalAlpha = 0.45;
-      if (player.face > 0) {
+      if (shouldFlipPlayer) {
         ctx.translate(dx + drawW, dy);
         ctx.scale(-1, 1);
-        ctx.drawImage(sprite, col * fw, row * fh, fw, fh, 0, 0, drawW, drawH);
+        ctx.drawImage(activePlayerSprite, col * fw, row * fh, fw, fh, 0, 0, drawW, drawH);
       } else {
-        ctx.drawImage(sprite, col * fw, row * fh, fw, fh, dx, dy, drawW, drawH);
+        ctx.drawImage(activePlayerSprite, col * fw, row * fh, fw, fh, dx, dy, drawW, drawH);
       }
       ctx.restore();
     }
