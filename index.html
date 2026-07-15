@@ -519,6 +519,8 @@
     const titleEl = document.querySelector("h1");
     const sprite = new Image();
     sprite.src = "kitasenju-game-spritesheet.webp";
+    const freezePoseImage = new Image();
+    freezePoseImage.src = "freeze-pose.png";
     const enemySprite = new Image();
     enemySprite.src = "flame-imp-game-spritesheet.png";
     const catEnemySprite = new Image();
@@ -543,6 +545,8 @@
     goalShopImage.src = "goal-shop.png";
     const stage15GoalImage = new Image();
     stage15GoalImage.src = "stage15-goal-park.png";
+    const goalClearBubbleImage = new Image();
+    goalClearBubbleImage.src = "goal-clear-bubble.png";
     const damekaneAttackImage = new Image();
     damekaneAttackImage.src = "damekane-attack-bubble.png?v=20260609-0153";
 
@@ -771,9 +775,9 @@
 
     function goalRect() {
       if (world.stage === 2) {
-        const w = 300;
-        const h = 210;
-        return { x: stageWidth() - w - 48, y: groundY() - h - 6, w, h };
+        const w = 120;
+        const h = 220;
+        return { x: stageWidth() - 180, y: groundY() - h - 6, w, h };
       }
       const w = 430;
       const h = 272;
@@ -1292,6 +1296,25 @@
       player.diveTimer = Math.max(0, player.diveTimer - dt);
       player.anim += dt;
 
+      const freezeActive = isFreezeActive();
+      if (freezeActive) {
+        player.vx = 0;
+        player.vy = 0;
+        for (const enemy of enemies) {
+          if (!isEnemyActiveForStage(enemy)) continue;
+          if (enemy.x > stageWidth()) continue;
+          if (rectsOverlap(player, enemy)) {
+            const hitX = enemy.x;
+            const hitY = enemy.y;
+            enemy.x = world.width + 9999;
+            playStompSound();
+            burst(hitX + enemy.w / 2, hitY + enemy.h / 2, "#b9f7ff", 18);
+          }
+        }
+        updateHud();
+        return;
+      }
+
       const targetSpeed = player.stunTimer > 0
         ? 0
         : world.stage === 2
@@ -1324,7 +1347,6 @@
         if (attack.timer <= 0) attack.active = false;
       }
 
-      const freezeActive = isFreezeActive();
       for (const enemy of enemies) {
         if (!isEnemyActiveForStage(enemy)) continue;
         if (enemy.x > stageWidth()) continue;
@@ -1541,7 +1563,7 @@
     }
 
     function drawPlatform(p) {
-      if (world.stage === 2) return;
+      if (world.stage === 2 || isFreezeActive()) return;
       const x = Math.round(p.x - world.camera);
       ctx.fillStyle = "#676d73";
       ctx.fillRect(x, p.y, p.w, p.h);
@@ -1824,7 +1846,7 @@
           ctx.fillRect(x, gy + 48, 82, 8);
         }
       }
-      if (isFreezeActive()) {
+      if (isFreezeActive() && world.stage !== 2) {
         ctx.save();
         ctx.globalCompositeOperation = "difference";
         ctx.fillStyle = "#ffffff";
@@ -1835,30 +1857,16 @@
 
     function drawGoalBubble() {
       if (!world.finished) return;
-      const x = Math.min(viewWidth() - 300, Math.max(26, player.x - world.camera - 72));
-      const y = Math.max(92, player.y - 118);
+      const maxW = Math.min(viewWidth() * 0.56, 520);
+      const drawW = Math.max(300, maxW);
+      const drawH = drawW * (2 / 3);
+      const x = Math.min(viewWidth() - drawW - 16, Math.max(16, player.x - world.camera - drawW * 0.42));
+      const y = Math.max(36, player.y - drawH - 28);
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#101010";
-      ctx.lineWidth = 4;
-      ctx.fillRect(x, y, 258, 58);
-      ctx.strokeRect(x, y, 258, 58);
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.moveTo(x + 54, y + 58);
-      ctx.lineTo(x + 76, y + 58);
-      ctx.lineTo(x + 60, y + 78);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#101010";
-      ctx.font = "900 24px 'MS Gothic', 'Yu Gothic', monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("万枚ダメカネ", x + 129, y + 30);
-      ctx.textAlign = "start";
-      ctx.textBaseline = "alphabetic";
+      if (goalClearBubbleImage.complete && goalClearBubbleImage.naturalWidth) {
+        ctx.drawImage(goalClearBubbleImage, x, y, drawW, drawH);
+      }
       ctx.restore();
     }
 
@@ -1891,6 +1899,17 @@
     function drawPlayer() {
       const activePlayerSprite = sprite;
       if (!activePlayerSprite.complete || !activePlayerSprite.naturalWidth) return;
+      if (isFreezeActive() && freezePoseImage.complete && freezePoseImage.naturalWidth) {
+        const drawH = player.h + 50;
+        const drawW = Math.round(drawH * (freezePoseImage.naturalWidth / freezePoseImage.naturalHeight));
+        const dx = Math.round(player.x - world.camera + player.w / 2 - drawW / 2);
+        const dy = Math.round(player.y + player.h - drawH);
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(freezePoseImage, dx, dy, drawW, drawH);
+        ctx.restore();
+        return;
+      }
       const fw = activePlayerSprite.width / 8;
       const fh = activePlayerSprite.height / 6;
       let row = 0;
