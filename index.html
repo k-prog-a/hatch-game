@@ -109,6 +109,14 @@
       to { background-position: 220% 50%; }
     }
 
+    .complete-count-image {
+      display: block;
+      width: min(260px, 42vw);
+      height: auto;
+      margin: -8px auto;
+      filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.72));
+    }
+
     .life-icons {
       display: inline-flex;
       align-items: center;
@@ -208,6 +216,41 @@
 
     .game-over-image[hidden] {
       display: none;
+    }
+
+    .start-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      display: grid;
+      place-items: end center;
+      padding: 0 20px max(54px, env(safe-area-inset-bottom));
+      background: #000 url("start-screen.png") center / contain no-repeat;
+      text-align: center;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .start-screen[hidden] {
+      display: none;
+    }
+
+    .start-prompt {
+      padding: 10px 18px;
+      border: 2px solid rgba(255, 255, 255, 0.86);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.62);
+      color: #fff;
+      font-size: clamp(22px, 4vw, 36px);
+      font-weight: 900;
+      letter-spacing: 0;
+      text-shadow: 0 3px 0 #000, 0 0 18px rgba(255, 255, 255, 0.72);
+      animation: startBlink 0.86s steps(2, end) infinite;
+    }
+
+    @keyframes startBlink {
+      50% { opacity: 0.18; }
     }
 
     .ending {
@@ -471,6 +514,9 @@
 
     <main>
       <canvas id="game" width="1280" height="720" aria-label="横スクロールゲーム"></canvas>
+      <div class="start-screen" id="startScreen">
+        <div class="start-prompt">タップでスタート</div>
+      </div>
       <audio id="bgm" src="retro-pixel-quest.mp3" loop preload="auto"></audio>
       <div class="message" id="message" hidden>
         <strong></strong>
@@ -515,6 +561,7 @@
     const presentButton = document.getElementById("presentButton");
     const presentImage = document.getElementById("presentImage");
     const gameOverImage = document.getElementById("gameOverImage");
+    const startScreenEl = document.getElementById("startScreen");
     const bgm = document.getElementById("bgm");
     const titleEl = document.querySelector("h1");
     const sprite = new Image();
@@ -547,6 +594,8 @@
     stage15GoalImage.src = "stage15-goal-park.png";
     const goalClearBubbleImage = new Image();
     goalClearBubbleImage.src = "goal-clear-bubble.png";
+    const stage2GoalClearImage = new Image();
+    stage2GoalClearImage.src = "stage2-goal-clear.jpg";
     const damekaneAttackImage = new Image();
     damekaneAttackImage.src = "damekane-attack-bubble.png?v=20260609-0153";
 
@@ -565,12 +614,15 @@
       autoRunSpeed: 235,
       coinBank: 0,
       bonusCoins: 0,
+      enemyBonus: 0,
       nextHealAt: 10,
       ending: false,
       resetTimer: null,
       startTime: 0,
       elapsed: 0,
+      titleScreen: true,
       freezeTimer: 0,
+      freezePoseTimer: 0,
       freezeAnim: 0,
       freezeBgmPaused: false
     };
@@ -775,9 +827,9 @@
 
     function goalRect() {
       if (world.stage === 2) {
-        const w = 120;
+        const w = 46;
         const h = 220;
-        return { x: stageWidth() - 180, y: groundY() - h - 6, w, h };
+        return { x: stageWidth() - 86, y: groundY() - h - 6, w, h };
       }
       const w = 430;
       const h = 272;
@@ -861,6 +913,8 @@
     }
     function start() {
       if (world.finished || world.ending || player.lives <= 0) return;
+      world.titleScreen = false;
+      startScreenEl.hidden = true;
       tryEnterFullscreen();
       if (!world.started) {
         playBgm();
@@ -880,10 +934,15 @@
       return (world.stage === 1 || world.stage === 1.5 || world.stage === 2) && world.freezeTimer > 0;
     }
 
+    function isFreezePoseActive() {
+      return isFreezeActive() && world.freezePoseTimer > 0;
+    }
+
     function startStageOneFreeze() {
       if ((world.stage !== 1 && world.stage !== 1.5 && world.stage !== 2) || world.finished || world.ending || player.lives <= 0) return;
       start();
-      world.freezeTimer = 3;
+      world.freezeTimer = 1.5;
+      world.freezePoseTimer = 0.5;
       world.freezeAnim = player.anim;
       if (!bgm.paused) {
         bgm.pause();
@@ -893,6 +952,7 @@
 
     function stopStageOneFreeze() {
       world.freezeTimer = 0;
+      world.freezePoseTimer = 0;
       if (world.freezeBgmPaused) {
         world.freezeBgmPaused = false;
         if (world.started && !world.finished && !world.ending && player.lives > 0) playBgm();
@@ -902,6 +962,7 @@
     function updateFreezeTimer(dt) {
       if (world.freezeTimer <= 0) return;
       world.freezeTimer = Math.max(0, world.freezeTimer - dt);
+      world.freezePoseTimer = Math.max(0, world.freezePoseTimer - dt);
       if (world.freezeTimer <= 0) stopStageOneFreeze();
     }
 
@@ -1067,11 +1128,13 @@
       world.transitioning = false;
       world.coinBank = 0;
       world.bonusCoins = 0;
+      world.enemyBonus = 0;
       world.nextHealAt = 10;
       world.ending = false;
       world.startTime = performance.now();
       world.elapsed = 0;
       world.freezeTimer = 0;
+      world.freezePoseTimer = 0;
       world.freezeAnim = 0;
       world.freezeBgmPaused = false;
       resetStageObjects();
@@ -1251,7 +1314,7 @@
     }
 
     function displayedCoinCount() {
-      return totalCoinsCollected() * 100;
+      return totalCoinsCollected() * 100 + world.enemyBonus;
     }
 
     function formattedDisplayedCoins() {
@@ -1267,9 +1330,20 @@
       }
     }
 
+    function defeatEnemy(enemy, color = "#ffffff", count = 16) {
+      const hitX = enemy.x;
+      const hitY = enemy.y;
+      enemy.x = world.width + 9999;
+      world.enemyBonus += 500;
+      playStompSound();
+      burst(hitX + enemy.w / 2, hitY + enemy.h / 2, color, count);
+    }
+
     function updateHud() {
       const displayedCoins = formattedDisplayedCoins();
-      if (displayedCoinCount() >= 10000) {
+      if (displayedCoinCount() >= 19000) {
+        coinsEl.innerHTML = `<img class="complete-count-image" src="complete-count.png" alt="COMPLETE">`;
+      } else if (displayedCoinCount() >= 10000) {
         coinsEl.innerHTML = `獲得枚数 <span class="rainbow-count">${displayedCoins}枚</span>`;
       } else {
         coinsEl.textContent = `獲得枚数 ${displayedCoins}枚`;
@@ -1297,18 +1371,14 @@
       player.anim += dt;
 
       const freezeActive = isFreezeActive();
-      if (freezeActive) {
+      if (isFreezePoseActive()) {
         player.vx = 0;
         player.vy = 0;
         for (const enemy of enemies) {
           if (!isEnemyActiveForStage(enemy)) continue;
           if (enemy.x > stageWidth()) continue;
           if (rectsOverlap(player, enemy)) {
-            const hitX = enemy.x;
-            const hitY = enemy.y;
-            enemy.x = world.width + 9999;
-            playStompSound();
-            burst(hitX + enemy.w / 2, hitY + enemy.h / 2, "#b9f7ff", 18);
+            defeatEnemy(enemy, "#b9f7ff", 18);
           }
         }
         updateHud();
@@ -1352,11 +1422,7 @@
         if (enemy.x > stageWidth()) continue;
         if (freezeActive) {
           if (rectsOverlap(player, enemy)) {
-            const hitX = enemy.x;
-            const hitY = enemy.y;
-            enemy.x = world.width + 9999;
-            playStompSound();
-            burst(hitX + enemy.w / 2, hitY + enemy.h / 2, "#b9f7ff", 18);
+            defeatEnemy(enemy, "#b9f7ff", 18);
           }
           continue;
         }
@@ -1382,11 +1448,8 @@
           }
         }
         if (attack.active && rectsOverlap(attack, enemy)) {
-          const hitX = enemy.x;
-          const hitY = enemy.y;
-          enemy.x = world.width + 9999;
+          defeatEnemy(enemy, "#ffffff", 16);
           attack.timer = Math.max(attack.timer, 0.12);
-          burst(hitX + enemy.w / 2, hitY + enemy.h / 2, "#ffffff", 16);
           continue;
         }
         if (rectsOverlap(player, enemy)) {
@@ -1394,14 +1457,10 @@
           const stompFromAbove = player.vy > 120 && playerBottom - enemy.y < 42;
           const divingStomp = player.diveTimer > 0 && player.vy > 300 && playerBottom <= enemy.y + enemy.h * 0.82;
           if (stompFromAbove || divingStomp) {
-            const stompX = enemy.x;
-            const stompY = enemy.y;
-            enemy.x = world.width + 9999;
             player.vy = divingStomp ? -360 : -620;
             player.diveTimer = 0;
             player.crouchTimer = Math.max(player.crouchTimer, 0.18);
-            playStompSound();
-            burst(stompX, stompY, divingStomp ? "#ffffff" : "#ffd438", divingStomp ? 18 : 12);
+            defeatEnemy(enemy, divingStomp ? "#ffffff" : "#ffd438", divingStomp ? 18 : 12);
           } else {
             hurt();
           }
@@ -1822,7 +1881,9 @@
         const sourceW = Math.min(activeBg.naturalWidth, sourceH * (w / h));
         const maxCamera = Math.max(1, stageWidth() - w);
         const progress = Math.max(0, Math.min(1, cam / maxCamera));
-        const bgProgress = Math.min(progress, world.stage === 2 ? 0.70 : world.stage === 1.5 ? 0.82 : 0.76);
+        const bgProgress = world.stage === 2
+          ? Math.min(1, progress * 1.12)
+          : Math.min(progress, world.stage === 1.5 ? 0.82 : 0.76);
         const sx = (activeBg.naturalWidth - sourceW) * bgProgress;
         const sy = world.stage === 2 ? Math.round(activeBg.naturalHeight * 0.10) : 0;
         ctx.drawImage(activeBg, sx, sy, sourceW, sourceH, 0, 0, w, h);
@@ -1857,15 +1918,19 @@
 
     function drawGoalBubble() {
       if (!world.finished) return;
-      const maxW = Math.min(viewWidth() * 0.56, 520);
-      const drawW = Math.max(300, maxW);
-      const drawH = drawW * (2 / 3);
+      const activeClearImage = world.stage === 2 ? stage2GoalClearImage : goalClearBubbleImage;
+      const imageRatio = activeClearImage.complete && activeClearImage.naturalWidth
+        ? activeClearImage.naturalHeight / activeClearImage.naturalWidth
+        : (world.stage === 2 ? 9 / 16 : 2 / 3);
+      const maxW = world.stage === 2 ? Math.min(viewWidth() * 0.76, 620) : Math.min(viewWidth() * 0.56, 520);
+      const drawW = Math.max(world.stage === 2 ? 360 : 300, maxW);
+      const drawH = drawW * imageRatio;
       const x = Math.min(viewWidth() - drawW - 16, Math.max(16, player.x - world.camera - drawW * 0.42));
       const y = Math.max(36, player.y - drawH - 28);
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      if (goalClearBubbleImage.complete && goalClearBubbleImage.naturalWidth) {
-        ctx.drawImage(goalClearBubbleImage, x, y, drawW, drawH);
+      if (activeClearImage.complete && activeClearImage.naturalWidth) {
+        ctx.drawImage(activeClearImage, x, y, drawW, drawH);
       }
       ctx.restore();
     }
@@ -1899,7 +1964,7 @@
     function drawPlayer() {
       const activePlayerSprite = sprite;
       if (!activePlayerSprite.complete || !activePlayerSprite.naturalWidth) return;
-      if (isFreezeActive() && freezePoseImage.complete && freezePoseImage.naturalWidth) {
+      if (isFreezePoseActive() && freezePoseImage.complete && freezePoseImage.naturalWidth) {
         const drawH = player.h + 50;
         const drawW = Math.round(drawH * (freezePoseImage.naturalWidth / freezePoseImage.naturalHeight));
         const dx = Math.round(player.x - world.camera + player.w / 2 - drawW / 2);
@@ -2013,6 +2078,11 @@
       clearLongPressTimer();
       longPressTriggered = false;
       tryEnterFullscreen();
+      if (world.titleScreen) {
+        event.preventDefault();
+        start();
+        return;
+      }
       if (world.ending) return;
       if (player.lives <= 0) restart();
       else if (world.finished || world.transitioning) return;
