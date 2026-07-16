@@ -111,10 +111,25 @@
 
     .complete-count-image {
       display: block;
-      width: min(260px, 42vw);
+      width: min(360px, 58vw);
       height: auto;
       margin: -8px auto;
       filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.72));
+    }
+
+    .pill.complete-count-fixed {
+      position: fixed;
+      top: max(10px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 6;
+      width: min(380px, 60vw);
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      pointer-events: none;
     }
 
     .life-icons {
@@ -1342,10 +1357,13 @@
     function updateHud() {
       const displayedCoins = formattedDisplayedCoins();
       if (displayedCoinCount() >= 19000) {
+        coinsEl.classList.add("complete-count-fixed");
         coinsEl.innerHTML = `<img class="complete-count-image" src="complete-count.png" alt="COMPLETE">`;
       } else if (displayedCoinCount() >= 10000) {
+        coinsEl.classList.remove("complete-count-fixed");
         coinsEl.innerHTML = `獲得枚数 <span class="rainbow-count">${displayedCoins}枚</span>`;
       } else {
+        coinsEl.classList.remove("complete-count-fixed");
         coinsEl.textContent = `獲得枚数 ${displayedCoins}枚`;
       }
       const lives = Math.max(0, player.lives);
