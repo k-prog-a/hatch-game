@@ -240,18 +240,57 @@
       display: grid;
       place-items: end center;
       padding: 0 20px max(54px, env(safe-area-inset-bottom));
-      background: #000 url("start-screen.png") center / contain no-repeat;
+      background: #000;
       text-align: center;
       touch-action: none;
       -webkit-user-select: none;
       user-select: none;
+      overflow: hidden;
     }
 
     .start-screen[hidden] {
       display: none;
     }
 
+    .start-art {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transition: opacity 1.15s ease, filter 1.15s steps(8, end), transform 1.15s ease;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .start-art.real {
+      opacity: 1;
+      filter: none;
+      transform: scale(1);
+    }
+
+    .start-art.dot {
+      opacity: 0;
+      image-rendering: pixelated;
+      filter: contrast(1.28) saturate(1.18);
+      transform: scale(1.02);
+    }
+
+    .start-screen.transitioning .start-art.real {
+      opacity: 0;
+      filter: contrast(1.45) saturate(1.35);
+      transform: scale(1.04);
+    }
+
+    .start-screen.transitioning .start-art.dot {
+      opacity: 1;
+      transform: scale(1);
+    }
+
     .start-prompt {
+      position: relative;
+      z-index: 1;
       padding: 10px 18px;
       border: 2px solid rgba(255, 255, 255, 0.86);
       border-radius: 8px;
@@ -262,6 +301,11 @@
       letter-spacing: 0;
       text-shadow: 0 3px 0 #000, 0 0 18px rgba(255, 255, 255, 0.72);
       animation: startBlink 0.86s steps(2, end) infinite;
+    }
+
+    .start-screen.transitioning .start-prompt {
+      opacity: 0;
+      animation: none;
     }
 
     @keyframes startBlink {
@@ -530,6 +574,8 @@
     <main>
       <canvas id="game" width="1280" height="720" aria-label="横スクロールゲーム"></canvas>
       <div class="start-screen" id="startScreen">
+        <img class="start-art real" src="start-real.jpg" alt="">
+        <img class="start-art dot" src="start-dot.png" alt="">
         <div class="start-prompt">タップでスタート</div>
       </div>
       <audio id="bgm" src="retro-pixel-quest.mp3" loop preload="auto"></audio>
@@ -606,7 +652,7 @@
     const goalShopImage = new Image();
     goalShopImage.src = "goal-shop.png";
     const stage15GoalImage = new Image();
-    stage15GoalImage.src = "stage15-goal-park.png";
+    stage15GoalImage.src = "goal-shop.png";
     const goalClearBubbleImage = new Image();
     goalClearBubbleImage.src = "goal-clear-bubble.png";
     const stage2GoalClearImage = new Image();
@@ -615,6 +661,7 @@
     damekaneAttackImage.src = "damekane-attack-bubble.png?v=20260609-0153";
 
     const keys = { left: false, right: false, jump: false };
+    const MAX_LIVES = 5;
     let audioCtx = null;
     const world = {
       width: 8400,
@@ -636,6 +683,7 @@
       startTime: 0,
       elapsed: 0,
       titleScreen: true,
+      titleTransitioning: false,
       freezeTimer: 0,
       freezePoseTimer: 0,
       freezeAnim: 0,
@@ -929,6 +977,7 @@
     function start() {
       if (world.finished || world.ending || player.lives <= 0) return;
       world.titleScreen = false;
+      world.titleTransitioning = false;
       startScreenEl.hidden = true;
       tryEnterFullscreen();
       if (!world.started) {
@@ -938,6 +987,13 @@
         resetMessageDisplay();
         messageEl.hidden = true;
       }
+    }
+
+    function startTitleTransition() {
+      if (!world.titleScreen || world.titleTransitioning) return;
+      world.titleTransitioning = true;
+      startScreenEl.classList.add("transitioning");
+      setTimeout(start, 1250);
     }
 
     function playBgm() {
@@ -1339,7 +1395,7 @@
     function maybeHealFromCoins() {
       const total = totalCoinsCollected();
       while (total >= world.nextHealAt) {
-        player.lives += 1;
+        player.lives = Math.min(MAX_LIVES, player.lives + 1);
         world.nextHealAt += 10;
         burst(player.x + player.w / 2, player.y + 12, "#9ef2e6", 14);
       }
@@ -1366,7 +1422,7 @@
         coinsEl.classList.remove("complete-count-fixed");
         coinsEl.textContent = `獲得枚数 ${displayedCoins}枚`;
       }
-      const lives = Math.max(0, player.lives);
+      const lives = Math.max(0, Math.min(MAX_LIVES, player.lives));
       livesEl.innerHTML = "";
       for (let i = 0; i < lives; i += 1) {
         const icon = document.createElement("span");
@@ -2098,7 +2154,7 @@
       tryEnterFullscreen();
       if (world.titleScreen) {
         event.preventDefault();
-        start();
+        startTitleTransition();
         return;
       }
       if (world.ending) return;
