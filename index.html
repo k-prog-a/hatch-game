@@ -1951,15 +1951,29 @@
         ? (world.stage === 2 ? stage2FreezeBgImage : world.stage === 1.5 ? stage15FreezeBgImage : freezeBgImage)
         : world.stage === 2 ? nightBgImage : world.stage === 1.5 ? stage15BgImage : bgImage;
       if (activeBg.complete && activeBg.naturalWidth) {
-        const sourceH = world.stage === 2 ? Math.round(activeBg.naturalHeight * 0.86) : activeBg.naturalHeight;
-        const sourceW = Math.min(activeBg.naturalWidth, sourceH * (w / h));
+        let sourceW;
+        let sourceH;
+        if (world.stage === 2) {
+          sourceH = Math.round(activeBg.naturalHeight * 0.86);
+          sourceW = Math.min(activeBg.naturalWidth, sourceH * (w / h));
+        } else {
+          const targetRatio = w / h;
+          const imageRatio = activeBg.naturalWidth / activeBg.naturalHeight;
+          if (imageRatio > targetRatio) {
+            sourceH = activeBg.naturalHeight;
+            sourceW = sourceH * targetRatio;
+          } else {
+            sourceW = activeBg.naturalWidth;
+            sourceH = sourceW / targetRatio;
+          }
+        }
         const maxCamera = Math.max(1, stageWidth() - w);
         const progress = Math.max(0, Math.min(1, cam / maxCamera));
         const bgProgress = world.stage === 2
           ? Math.min(1, progress * 1.12)
           : Math.min(progress, world.stage === 1.5 ? 0.82 : 0.76);
         const sx = (activeBg.naturalWidth - sourceW) * bgProgress;
-        const sy = world.stage === 2 ? Math.round(activeBg.naturalHeight * 0.10) : 0;
+        const sy = world.stage === 2 ? Math.round(activeBg.naturalHeight * 0.10) : Math.max(0, activeBg.naturalHeight - sourceH);
         ctx.drawImage(activeBg, sx, sy, sourceW, sourceH, 0, 0, w, h);
       } else {
         const sky = ctx.createLinearGradient(0, 0, 0, h);
