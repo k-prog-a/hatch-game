@@ -1285,6 +1285,7 @@
 
     function showPresent() {
       creditsEl.hidden = true;
+      presentImage.src = completionAchieved() ? "present.backup-20260719.png" : "present.png";
       presentImage.hidden = false;
       if (world.resetTimer) clearTimeout(world.resetTimer);
       world.resetTimer = setTimeout(restart, 5000);
