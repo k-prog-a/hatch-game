@@ -110,11 +110,12 @@
     }
 
     .complete-count-image {
-      display: block;
-      width: min(360px, 58vw);
-      height: auto;
-      margin: -8px auto;
-      filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.72));
+      display: inline-block;
+      width: auto;
+      height: 1.45em;
+      margin-left: 6px;
+      vertical-align: -0.32em;
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.64));
     }
 
     .pill.complete-count-fixed {
@@ -237,9 +238,8 @@
       position: absolute;
       inset: 0;
       z-index: 8;
-      display: grid;
-      place-items: end center;
-      padding: 0 20px max(54px, env(safe-area-inset-bottom));
+      display: block;
+      padding: 0;
       background: #000;
       text-align: center;
       touch-action: none;
@@ -289,14 +289,18 @@
     }
 
     .start-prompt {
-      position: relative;
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      transform: translate(-50%, -50%);
       z-index: 1;
-      padding: 10px 18px;
-      border: 2px solid rgba(255, 255, 255, 0.86);
+      width: min(76vw, 520px);
+      padding: 14px 20px;
+      border: 3px solid rgba(255, 255, 255, 0.94);
       border-radius: 8px;
-      background: rgba(0, 0, 0, 0.62);
+      background: rgba(0, 0, 0, 0.72);
       color: #fff;
-      font-size: clamp(22px, 4vw, 36px);
+      font-size: clamp(30px, 6vw, 56px);
       font-weight: 900;
       letter-spacing: 0;
       text-shadow: 0 3px 0 #000, 0 0 18px rgba(255, 255, 255, 0.72);
@@ -655,8 +659,6 @@
     stage15GoalImage.src = "goal-shop.png";
     const goalClearBubbleImage = new Image();
     goalClearBubbleImage.src = "goal-clear-bubble.png";
-    const stage2GoalClearImage = new Image();
-    stage2GoalClearImage.src = "stage2-goal-clear.jpg";
     const damekaneAttackImage = new Image();
     damekaneAttackImage.src = "damekane-attack-bubble.png?v=20260609-0153";
 
@@ -1413,8 +1415,8 @@
     function updateHud() {
       const displayedCoins = formattedDisplayedCoins();
       if (displayedCoinCount() >= 19000) {
-        coinsEl.classList.add("complete-count-fixed");
-        coinsEl.innerHTML = `<img class="complete-count-image" src="complete-count.png" alt="COMPLETE">`;
+        coinsEl.classList.remove("complete-count-fixed");
+        coinsEl.innerHTML = `獲得枚数 <img class="complete-count-image" src="complete-count.png" alt="COMPLETE">`;
       } else if (displayedCoinCount() >= 10000) {
         coinsEl.classList.remove("complete-count-fixed");
         coinsEl.innerHTML = `獲得枚数 <span class="rainbow-count">${displayedCoins}枚</span>`;
@@ -2006,7 +2008,7 @@
 
     function drawGoalBubble() {
       if (!world.finished) return;
-      const activeClearImage = world.stage === 2 ? stage2GoalClearImage : goalClearBubbleImage;
+      const activeClearImage = goalClearBubbleImage;
       const imageRatio = activeClearImage.complete && activeClearImage.naturalWidth
         ? activeClearImage.naturalHeight / activeClearImage.naturalWidth
         : (world.stage === 2 ? 9 / 16 : 2 / 3);
