@@ -1404,9 +1404,7 @@
     }
 
     function completionAchieved() {
-      return displayedCoinCount() >= COMPLETE_SCORE_TARGET
-        && totalCoinsCollected() >= COMPLETION_COIN_TARGET
-        && world.enemyDefeats >= COMPLETION_ENEMY_TARGET;
+      return displayedCoinCount() >= COMPLETE_SCORE_TARGET;
     }
 
     function maybeHealFromCoins() {
