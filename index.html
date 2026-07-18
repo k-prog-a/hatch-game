@@ -664,6 +664,9 @@
 
     const keys = { left: false, right: false, jump: false };
     const MAX_LIVES = 5;
+    const COIN_VALUE = 100;
+    const ENEMY_DEFEAT_VALUE = 175;
+    const COMPLETE_SCORE_TARGET = 19000;
     let audioCtx = null;
     const world = {
       width: 8400,
@@ -679,6 +682,7 @@
       coinBank: 0,
       bonusCoins: 0,
       enemyBonus: 0,
+      enemyDefeats: 0,
       nextHealAt: 10,
       ending: false,
       resetTimer: null,
@@ -819,6 +823,9 @@
 
     enemies.push(...stageOneHalfEnemies, ...stageTwoExtraEnemies);
 
+    const COMPLETION_COIN_TARGET = Math.ceil((coins.length + 4) * 3 * 0.9);
+    const COMPLETION_ENEMY_TARGET = enemies.length;
+
     const blocks = Array.from({ length: 18 }, (_, i) => ({
       x: 760 + i * 430 + (i % 4) * 56,
       y: 0,
@@ -868,6 +875,7 @@
         enemy.vy = 0;
         return;
       }
+      enemy.defeated = false;
       const offset = world.stage === 2 && !enemy.stageOnly ? 360 + (index % 3) * 80 : 0;
       enemy.x = enemy.startX + offset;
       enemy.y = 0;
@@ -1202,6 +1210,7 @@
       world.coinBank = 0;
       world.bonusCoins = 0;
       world.enemyBonus = 0;
+      world.enemyDefeats = 0;
       world.nextHealAt = 10;
       world.ending = false;
       world.startTime = performance.now();
@@ -1387,11 +1396,17 @@
     }
 
     function displayedCoinCount() {
-      return totalCoinsCollected() * 100 + world.enemyBonus;
+      return totalCoinsCollected() * COIN_VALUE + world.enemyBonus;
     }
 
     function formattedDisplayedCoins() {
       return displayedCoinCount().toLocaleString("ja-JP");
+    }
+
+    function completionAchieved() {
+      return displayedCoinCount() >= COMPLETE_SCORE_TARGET
+        && totalCoinsCollected() >= COMPLETION_COIN_TARGET
+        && world.enemyDefeats >= COMPLETION_ENEMY_TARGET;
     }
 
     function maybeHealFromCoins() {
@@ -1404,17 +1419,20 @@
     }
 
     function defeatEnemy(enemy, color = "#ffffff", count = 16) {
+      if (enemy.defeated) return;
       const hitX = enemy.x;
       const hitY = enemy.y;
+      enemy.defeated = true;
       enemy.x = world.width + 9999;
-      world.enemyBonus += 500;
+      world.enemyBonus += ENEMY_DEFEAT_VALUE;
+      world.enemyDefeats += 1;
       playStompSound();
       burst(hitX + enemy.w / 2, hitY + enemy.h / 2, color, count);
     }
 
     function updateHud() {
       const displayedCoins = formattedDisplayedCoins();
-      if (displayedCoinCount() >= 19000) {
+      if (completionAchieved()) {
         coinsEl.classList.remove("complete-count-fixed");
         coinsEl.innerHTML = `獲得枚数 <img class="complete-count-image" src="complete-count.png" alt="COMPLETE">`;
       } else if (displayedCoinCount() >= 10000) {
