@@ -668,6 +668,7 @@
     const ENEMY_DEFEAT_VALUE = 175;
     const COMPLETE_SCORE_TARGET = 19000;
     let audioCtx = null;
+    let audioUnlocked = false;
     const world = {
       width: 8400,
       stageWidths: { 1: 4200, 1.5: 5000, 2: 8400 },
@@ -1001,6 +1002,7 @@
 
     function startTitleTransition() {
       if (!world.titleScreen || world.titleTransitioning) return;
+      unlockAudioForGesture();
       world.titleTransitioning = true;
       startScreenEl.classList.add("transitioning");
       setTimeout(start, 1250);
@@ -1008,7 +1010,22 @@
 
     function playBgm() {
       bgm.volume = 0.42;
+      bgm.muted = false;
       bgm.play().catch(() => {});
+    }
+
+    function unlockAudioForGesture() {
+      if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+      bgm.muted = false;
+      bgm.volume = 0.42;
+      const playPromise = bgm.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise
+          .then(() => { audioUnlocked = true; })
+          .catch(() => { audioUnlocked = false; });
+      } else {
+        audioUnlocked = true;
+      }
     }
 
     function isFreezeActive() {
@@ -2179,6 +2196,7 @@
       if (event.code === "ArrowUp" || event.code === "KeyW" || event.code === "Space") setKey("jump", false);
     });
     window.addEventListener("pointerdown", (event) => {
+      unlockAudioForGesture();
       swipeStartX = event.clientX;
       swipeStartY = event.clientY;
       swipeStartTime = performance.now();
@@ -2202,6 +2220,13 @@
             startStageOneFreeze();
           }, 2000);
         }
+      }
+    });
+    window.addEventListener("touchstart", unlockAudioForGesture, { passive: true });
+    window.addEventListener("click", unlockAudioForGesture);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && world.started && !world.finished && !world.ending && player.lives > 0 && !audioUnlocked) {
+        playBgm();
       }
     });
     window.addEventListener("pointerup", (event) => {
